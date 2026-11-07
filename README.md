@@ -27,14 +27,38 @@ Reference datasets and the service database are stored in `SEA_HOME` (default: `
 
 ## Building a ChEMBL reference database
 
-Choose a release and obtain its SHA256 checksum from the [official distribution](https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/). Pin the release and allow several gigabytes for the download, plus extraction space. Downloads do not automatically follow the latest release.
+Choose a release from the [official distribution](https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/). The `--sha256` argument must be the SHA256 checksum of the **compressed SQLite archive `chembl_<release>_sqlite.tar.gz`**, exactly as downloaded. It is not the checksum of the extracted `.db` file, `checksums.txt`, or another ChEMBL download such as the SDF, MySQL, or PostgreSQL archive.
+
+In the release directory `chembl_<release>/`, open `checksums.txt` and find the row whose filename is `chembl_<release>_sqlite.tar.gz`. Copy the 64-character hexadecimal value from that row's `SHA256` column.
+
+| Placeholder | Meaning |
+| --- | --- |
+| `RELEASE_NUMBER` | Numeric ChEMBL release, such as `36`. |
+| `SQLITE_ARCHIVE_SHA256` | SHA256 for `chembl_RELEASE_NUMBER_sqlite.tar.gz` from that release's `checksums.txt`. |
 
 ```bash
-pixi run sea download --release RELEASE_NUMBER --sha256 OFFICIAL_SHA256
+pixi run sea download --release RELEASE_NUMBER --sha256 SQLITE_ARCHIVE_SHA256
 pixi run sea build --sqlite var/downloads/chembl_RELEASE_NUMBER.db --release ChEMBL_RELEASE_NUMBER
 ```
 
-Replace `RELEASE_NUMBER` and `OFFICIAL_SHA256` with actual values. You can also pass an existing official SQLite database directly to `--sqlite`. The builder checks the requested release against the database's version table.
+For example, the [ChEMBL 36 checksum file](https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_36/checksums.txt) lists the following entry for the [SQLite archive](https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_36/chembl_36_sqlite.tar.gz):
+
+```text
+b25820eef0f0481ad7712bdf4bac3b45f354e3cbacb76be1fdbf4205d6b48fb9  chembl_36_sqlite.tar.gz
+```
+
+The corresponding commands are:
+
+```bash
+pixi run sea download --release 36 --sha256 b25820eef0f0481ad7712bdf4bac3b45f354e3cbacb76be1fdbf4205d6b48fb9
+pixi run sea build --sqlite var/downloads/chembl_36.db --release ChEMBL_36
+```
+
+The download command fetches `https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/chembl_36/chembl_36_sqlite.tar.gz`, verifies the archive's SHA256, and then extracts the SQLite database into `var/downloads/`. It prints the extracted database path; use that path for `--sqlite`. With a custom `SEA_HOME`, downloads are stored under `$SEA_HOME/downloads/` instead.
+
+This example pins release 36; it does not select the latest release. For another release, change both the release number and its matching SQLite archive checksum. Allow several gigabytes for the download, plus extraction space.
+
+You can also pass an existing official SQLite database directly to `sea build --sqlite`. The builder checks the requested release against the database's version table. Its provenance manifest records the SHA256 of the extracted SQLite input file, which differs from the archive checksum used by `sea download`.
 
 Default filters are defined in `config/chembl.json`: human single-protein targets, assay confidence 9, binding assays, Ki/Kd/IC50 measurements with an exact equality relation, and valid pChEMBL values. Measurements with quality flags or marked as potential duplicates are excluded. Parent structures are standardized, and median potency is calculated separately for each target, standardized structure, and measurement type. A ligand is considered active if at least one measurement type has a median pChEMBL ≥ 6. Targets must have at least 10 active ligands. Measurement types are not averaged together.
 
