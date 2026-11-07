@@ -4,6 +4,7 @@ import json
 import secrets
 import sqlite3
 import time
+from functools import lru_cache
 from .data import home, load_dataset
 from .chemistry import normalize, raw_score
 from .statistics import significance
@@ -63,6 +64,16 @@ def claim(worker):
     return dict(row) if row else None
 
 
+@lru_cache(maxsize=2)
+def background_cache(root, dataset_id):
+    """Reuse deterministic null samples across jobs in this worker process.
+
+    The dataset ID includes calibration settings, seed and the background pool.
+    The root isolates deployments with separate SEA_HOME directories.
+    """
+    return {}
+
+
 def process(job):
     jid = job["id"]
     last_check = [0.]
@@ -95,7 +106,7 @@ def process(job):
                            for i,(a,_) in enumerate(normalized) for t in data["targets"]]
             output["normalization"] = [rows for _, rows in normalized]
             ndb = len(data["targets"])
-        null_cache = {}
+        null_cache = background_cache(str(home().resolve()), payload["dataset_id"])
         for i, entry in enumerate(comparisons):
             check()
             index,a,b,*target = entry

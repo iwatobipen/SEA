@@ -27,3 +27,12 @@ Example measurements for the synthetic demo (30 molecules, three sets, two separ
 The full ChEMBL download and reference-database build have not been run. Biological prediction accuracy on real data has not been evaluated with the scaffold holdout. The build, calibration, and evaluation CLI commands are implemented; run `sea build` and `sea evaluate` on real data before making scientific performance claims. The synthetic demo's target names describe chemical groups, not actual proteins.
 
 In the development sandbox, TestClient's internal event-loop communication stalled. API and browser checks were therefore run in an execution environment that allowed local communication.
+
+
+## ChEMBL query performance follow-up
+
+A full ChEMBL 37 reference dataset was subsequently built with 1,517 targets and 441,860 unique molecules. Investigation of delayed predictions found that Monte Carlo sampling was also being performed for zero-score targets. Since null raw scores are always nonnegative, these comparisons have the exact p-value 1 and now return `method=exact_zero` without sampling. Workers also reuse deterministic null distributions across jobs for the same dataset and size pair.
+
+The follow-up regression suite passed all 12 tests in 2.87 seconds, including the exact zero-score result and reuse of the same Monte Carlo samples across jobs. On one observed single-molecule ChEMBL 37 query, scoring and significance evaluation across 1,517 targets took 49.64 seconds, excluding dataset loading: 1,469 comparisons used the exact zero-score result and 48 used Monte Carlo sampling. Latency depends on the query, ligand-set sizes, and worker cache state; this is not a general performance guarantee or a biological accuracy benchmark.
+
+The web interface now displays waiting/running status and percentage progress, and disables submission buttons while a job is active to prevent accidental duplicate jobs.

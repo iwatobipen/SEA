@@ -132,7 +132,7 @@ class ScoreResult(BaseModel):
     e_value: float
     log_e_value: float
     comparisons: int
-    method: Literal["gumbel", "monte_carlo"]
+    method: Literal["gumbel", "monte_carlo", "exact_zero"]
     p_resolution: float | None
 
 

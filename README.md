@@ -109,6 +109,8 @@ pixi run test
 
 See [docs/method.md](docs/method.md) for calculation details and [docs/validation.md](docs/validation.md) for the recorded checks. RDKit and ChEMBL replace the original Daylight fingerprints and MDDR dataset, so numerical agreement with the original paper is not claimed. E-values are not binding probabilities. With the default 999 Monte Carlo trials, the smallest possible p-value is 0.001; this resolution may be insufficient when searching many targets.
 
+Zero-score comparisons return the exact p-value 1 without Monte Carlo sampling (`method=exact_zero`). Workers reuse deterministic background samples across jobs for the same dataset and set sizes. The web interface displays queue state and progress and prevents repeated submissions while a job is active.
+
 Change the Monte Carlo trial count with `sea build --trials 99999` or `sea calibrate DATASET_ID --trials 99999`. More trials improve p-value resolution and increase computation time. The result's `execution` field records job duration and worker peak RSS in KiB.
 
 Source code is licensed under MIT. The synthetic demo data is CC0. ChEMBL-derived data uses CC BY-SA 3.0, separately from the software license. Include the manifest's attribution and release information when redistributing a built dataset.

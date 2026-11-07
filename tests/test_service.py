@@ -103,3 +103,28 @@ def test_worker_restart_recovers_claimed_job(service):
     finally:
         worker.terminate()
         worker.wait(timeout=10)
+
+
+def test_background_samples_are_reused_across_jobs(service,monkeypatch):
+    import sea.statistics as statistics
+    from sea.jobs import background_cache
+    client,dataset,a,b=service
+    original=statistics.raw_score
+    calls=[]
+    def counted(*args, **kwargs):
+        calls.append(1)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(statistics,'raw_score',counted)
+    payload={'dataset_id':dataset,'left':['CCO'],'right':['CCO']}
+    outputs=[]
+    for _ in range(2):
+        jid=client.post('/api/v1/comparisons',headers=a,json=payload).json()['job_id']
+        process(claim('test'))
+        outputs.append(client.get(f'/api/v1/jobs/{jid}/result',headers=a).json()['results'])
+    assert outputs[0]==outputs[1]
+    assert len(calls)==999  # One null distribution, reused by the second job.
+    from sea.data import home
+    cache=background_cache(str(home().resolve()),dataset)
+    assert (1,1) in cache
+    assert background_cache(str(home().resolve()),dataset) is cache
+    assert background_cache(str(home().resolve()),'different-dataset') is not cache

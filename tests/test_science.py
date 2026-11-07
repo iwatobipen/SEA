@@ -48,3 +48,18 @@ def test_gumbel_path_preserves_log_tail():
     assert result['method']=='gumbel'
     assert result['p_value']==0 and result['log_p_value']==-1000
     assert result['log_e_value']==pytest.approx(-1000+math.log(20))
+
+
+def test_zero_score_is_exact_without_sampling(monkeypatch):
+    import sea.statistics as statistics
+    def unexpected(*args, **kwargs):
+        raise AssertionError('Zero scores must not run Monte Carlo sampling')
+    monkeypatch.setattr(statistics.np.random, 'default_rng', unexpected)
+    model={'threshold':.57,'std_b':1.,'std_c':.5,'mean_a':0.,'evd_usable':False,'seed':42,'empirical_trials':999,'sizes':[1,10]}
+    result=significance(0,1,10,[],model,1517)
+    assert result['method']=='exact_zero'
+    assert result['p_value']==1 and result['log_p_value']==0
+    assert result['e_value']==1517 and result['p_resolution'] is None
+    # The nonnegative support also applies when an EVD model is available.
+    model['evd_usable']=True
+    assert significance(0,10,10,[],model)['method']=='exact_zero'

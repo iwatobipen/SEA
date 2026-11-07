@@ -14,9 +14,11 @@ await call('Page.navigate',{url:base});await delay(1000);
 await evaluate(`document.getElementById('key').value=${JSON.stringify(process.env.SEA_SMOKE_KEY)};document.getElementById('login').requestSubmit();`);
 for(let i=0;i<30;i++){if(await evaluate("!document.getElementById('workspace').hidden"))break;await delay(200);}
 if(!await evaluate("!document.getElementById('workspace').hidden"))throw Error('Login failed');
-await evaluate("document.getElementById('query').value='CCO\\nCCCO';document.getElementById('predict-submit').click()");
+await evaluate("document.getElementById('query').value='CCO\\nCCCO';document.getElementById('predict-submit').click();document.getElementById('predict-submit').click()");
 for(let i=0;i<60;i++){if(await evaluate("!document.getElementById('result-panel').hidden"))break;await delay(500);}
 const rows=await evaluate("document.querySelectorAll('#result-rows tr').length");
+const jobCount=await evaluate("fetch('/api/v1/jobs').then(r=>r.json()).then(jobs=>jobs.length)");
+if(jobCount!==1)throw Error('Duplicate submission created extra jobs: '+jobCount);
 if(rows<1)throw Error('No results: '+await evaluate("document.getElementById('message').textContent"));
 const desktop=await call('Page.captureScreenshot',{format:'png',captureBeyondViewport:true});fs.writeFileSync('var/smoke-desktop.png',Buffer.from(desktop.data,'base64'));
 await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});

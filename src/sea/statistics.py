@@ -82,7 +82,11 @@ def significance(score, left_size, right_size, pool, model, comparisons=1, check
                 and min(model["sizes"]) <= min(left_size, right_size)
                 and max(left_size, right_size) <= max(model["sizes"]))
     resolution = None
-    if eligible and z is not None:
+    if score == 0:
+        # Every null raw score is nonnegative, so P(null >= 0) is exactly 1.
+        # This avoids sampling for targets with no contributing ligand pairs.
+        p, log_p, method = 1.0, 0.0, "exact_zero"
+    elif eligible and z is not None:
         normalized = (z-model["gumbel_loc"])/model["gumbel_scale"]
         # log survival is asymptotically -normalized; avoid subtraction cancellation.
         log_p = -normalized if normalized > 35 else float(stats.gumbel_r.logsf(normalized))
