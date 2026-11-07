@@ -1,20 +1,20 @@
-# 計算方法と原著との差分
+# Calculation method and differences from the original paper
 
-1. RDKit Cleanup → FragmentParent → Uncharger → canonical isomeric SMILES。集合内の同一構造を除き、集合間の共通構造は残す。互変異性体は統合しない。
-2. RDKit path fingerprint: 2048 bit, minPath=1, maxPath=7。他の設定はロックされたRDKit版の既定値。Tanimotoが閾値以上の全ペアのTanimotoを合計する（閾値を引き算しない）。
-3. 校正用の背景分子は参照DB内のユニーク構造を一様にサンプリング。集合内は非復元抽出、2集合は独立に抽出する。集合間の重複は許す。
-4. 各サイズ対で反復サンプルを生成し、前半で平均 `mu(n)=a*n`、標準偏差 `sigma(n)=b*n**c` を推定する。nは集合サイズの積。sigmaはlog空間で回帰する。
-5. 閾値0.30–0.80（0.01刻み）でZ-scoreを計算し、Gumbel分布の位置・尺度を学習する。後半サンプルに対するKS統計量が最小の閾値を採用する。サイズ積100未満と分散ゼロは分布fitから除く。独立した最終評価はscaffold holdoutで行う。
-6. held-out KS ≤ 0.10、両集合10分子以上、校正サイズ範囲内の場合にGumbelによるp値を使用。それ以外は実際のサイズ対でMonte Carloを行う。試行数999、`p=(exceed+1)/(trials+1)`。同じジョブ内でサイズ対の背景スコアを再利用する。集合サイズが背景プールを超える入力は拒否する。
-7. `E=p*N`。Nは検索対象の全標的数（top_kではない）、2集合の比較では1。log pとlog Eは自然対数。Eは1を超え得る。順位はlog E、小さい順、同値ならraw scoreの大きい順。Monte Carloの分解能による同順位が生じる。
+1. Standardize structures using RDKit Cleanup → FragmentParent → Uncharger → canonical isomeric SMILES. Remove duplicate structures within each set and retain shared structures across sets. Tautomers are not merged.
+2. Generate RDKit path fingerprints with 2048 bits, `minPath=1`, and `maxPath=7`. Other settings use the defaults of the locked RDKit version. The raw score is the sum of Tanimoto coefficients for all molecule pairs at or above the threshold; the threshold is not subtracted from each contribution.
+3. Sample calibration molecules uniformly from the unique structures in the reference database. Sample without replacement within each set and independently between sets, allowing structures to overlap across sets.
+4. Generate repeated samples for each size pair. Use the first half to estimate the mean `mu(n)=a*n` and standard deviation `sigma(n)=b*n**c`, where `n` is the product of the two set sizes. Fit the standard deviation in log space.
+5. Calculate Z-scores and fit Gumbel location and scale parameters for thresholds from 0.30 to 0.80 in increments of 0.01. Select the threshold with the lowest KS statistic on the second half of the samples. Exclude size pairs with fewer than 10 molecules in either set or zero score variance from distribution fitting. Use a separate scaffold holdout for final target-retrieval evaluation.
+6. Use Gumbel p-values when the held-out KS statistic is ≤ 0.10, both sets have at least 10 molecules, and their sizes are within the calibrated range. Otherwise, use Monte Carlo evaluation at the actual set sizes. The default is 999 trials, with `p=(exceed+1)/(trials+1)`. Reuse background scores for matching size pairs within a job. Reject inputs whose set sizes exceed the background pool size.
+7. Calculate `E=p*N`, where `N` is the total number of searched targets, regardless of `top_k`. For a two-set comparison, `N=1`. Log p-values and log E-values use natural logarithms. E-values may exceed 1. Rank results by ascending log E-value, breaking ties by descending raw score. Finite Monte Carlo resolution can produce ties.
 
-これは原著の統計的枠組みを使った実装上の選択であり、原著と同じ背景分布を保証しない。特に単一分子には連続極値分布を仮定せず、有限試行による評価を返す。閾値選択とGumbel適合の診断はdatasetのmodelに保存する。
+These are implementation choices within the original paper's statistical framework; they do not guarantee the same background distribution. In particular, single-molecule queries use finite-sample Monte Carlo evaluation instead of assuming a continuous extreme-value distribution. Threshold-selection and Gumbel-fit diagnostics are stored in the dataset's model.
 
-原著の係数は専用テストにだけ使用する。原著Supplementary Methodsの数値例は丸め誤差があり、本文のE値との完全一致を期待しない。
+The original paper's coefficients are used only in dedicated tests. The numerical example in the original Supplementary Methods contains rounding differences, so exact agreement with the E-value reported in the paper is not expected.
 
-- 原著: https://doi.org/10.1038/nbt1284
+- Original paper: https://doi.org/10.1038/nbt1284
 - Supplementary Methods: https://static-content.springer.com/esm/art%3A10.1038%2Fnbt1284/MediaObjects/41587_2007_BFnbt1284_MOESM64_ESM.pdf
-- ChEMBL confidence: https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/chembl-data-questions
+- ChEMBL assay confidence: https://chembl.gitbook.io/chembl-interface-documentation/frequently-asked-questions/chembl-data-questions
 - RDKit: https://www.rdkit.org/docs/GettingStartedInPython.html
 
-全標的ネットワークとMCP、一般公開向けアカウント管理、分散workerは初版に含まない。単一ホストのSQLiteキューは、研究室内の小規模共有向け。
+The initial release does not include all-target networks, an MCP server, public-facing account management, or distributed workers. The single-host SQLite queue is intended for small shared lab deployments.

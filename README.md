@@ -1,12 +1,12 @@
 # SEA Open
 
-リガンド集合の化学的類似性から標的を関連付けるSimilarity Ensemble Approach (SEA) のOSS再実装です。Pixi、RDKit、FastAPIを使用します。日本語Web UI、APIキー認証、永続ジョブ、独立workerを備えています。
+An open-source implementation of the Similarity Ensemble Approach (SEA), which relates protein targets through the chemical similarity of their ligand sets. Built with Pixi, RDKit, and FastAPI, it provides a Japanese web interface, API key authentication, persistent jobs, and separate worker processes.
 
-原著: Keiser et al., *Relating protein pharmacology by ligand chemistry*, Nature Biotechnology 25, 197–206 (2007), https://doi.org/10.1038/nbt1284
+Original paper: Keiser et al., *Relating protein pharmacology by ligand chemistry*, Nature Biotechnology 25, 197–206 (2007), https://doi.org/10.1038/nbt1284
 
-## 起動
+## Getting started
 
-Linux x86_64とPixiを使用します。
+Requirements: Linux x86_64 and Pixi.
 
 ```bash
 pixi install --locked
@@ -14,77 +14,77 @@ pixi run demo
 pixi run sea key alice
 ```
 
-最後のコマンドが表示するAPIキーを保存してください。キーはDBにはSHA256として保存されます。別々のターミナルで実行します。
+Save the API key printed by the last command. Only its SHA256 hash is stored in the database. Start the worker and API server in separate terminals:
 
 ```bash
 pixi run worker
 pixi run serve
 ```
 
-http://127.0.0.1:8000 を開き、APIキーで接続します。API文書は `/docs`、機械可読仕様は `/openapi.json` です。デモは合成のアルコール・カルボン酸・芳香族集合であり、生物学的標的の予測に使用できません。
+Open http://127.0.0.1:8000 and sign in with your API key. Interactive API documentation is available at `/docs`, and the machine-readable specification is at `/openapi.json`. The demo contains synthetic alcohol, carboxylic acid, and aromatic compound sets; it cannot predict biological targets.
 
-`SEA_HOME`（既定 `var/`）に参照DBとサービスDBを保存します。`pixi run sea datasets` でdataset IDを取得します。サンドボックスで `/tmp` に書けない場合は、作業ディレクトリ内に一時ディレクトリを作り `TMPDIR="$PWD/.cache/tmp" pixi …` を使用してください。
+Reference datasets and the service database are stored in `SEA_HOME` (default: `var/`). Run `pixi run sea datasets` to list dataset IDs. If your sandbox does not allow writes to `/tmp`, create a temporary directory inside the workspace and use `TMPDIR="$PWD/.cache/tmp" pixi …`.
 
-## ChEMBL参照DB
+## Building a ChEMBL reference database
 
-[公式配布](https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/)から、使用するリリースと対応するSHA256を確認します。版を固定し、数GBの取得と展開領域を確保してください。自動で最新版へ更新しません。
+Choose a release and obtain its SHA256 checksum from the [official distribution](https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/). Pin the release and allow several gigabytes for the download, plus extraction space. Downloads do not automatically follow the latest release.
 
 ```bash
 pixi run sea download --release RELEASE_NUMBER --sha256 OFFICIAL_SHA256
 pixi run sea build --sqlite var/downloads/chembl_RELEASE_NUMBER.db --release ChEMBL_RELEASE_NUMBER
 ```
 
-`RELEASE_NUMBER`、`OFFICIAL_SHA256` は実際の値に置換します。既存の公式SQLiteを `--sqlite` に直接指定することもできます。ファイル内のversionテーブルと指定版を照合します。
+Replace `RELEASE_NUMBER` and `OFFICIAL_SHA256` with actual values. You can also pass an existing official SQLite database directly to `--sqlite`. The builder checks the requested release against the database's version table.
 
-既定条件は `config/chembl.json`：ヒト、単一タンパク質、confidence 9、binding assay、Ki/Kd/IC50、厳密な等号測定、有効なpChEMBL、品質問題・potential duplicate除外。親分子構造を正規化し、標的・構造・測定指標ごとの中央値がpChEMBL ≥ 6のものを活性リガンドとします。10分子以上の標的を採用します。指標間の平均は計算しません。
+Default filters are defined in `config/chembl.json`: human single-protein targets, assay confidence 9, binding assays, Ki/Kd/IC50 measurements with an exact equality relation, and valid pChEMBL values. Measurements with quality flags or marked as potential duplicates are excluded. Parent structures are standardized, and median potency is calculated separately for each target, standardized structure, and measurement type. A ligand is considered active if at least one measurement type has a median pChEMBL ≥ 6. Targets must have at least 10 active ligands. Measurement types are not averaged together.
 
-標的、リガンド、活性測定の由来、原データSHA256、フィルター、除外件数、RDKit版、校正情報を不変のJSONに保存します。設定・データ・校正が変わると新しいdataset IDになります。ソースデータと校正を変更しない再構築では同じIDになります。
+Each immutable JSON dataset records targets, ligands, measurement provenance, the source SHA256 checksum, filters, exclusion counts, the RDKit version, and calibration details. Changes to data, settings, or calibration produce a new dataset ID. Rebuilding with identical inputs and calibration produces the same ID.
 
 ```bash
 pixi run sea calibrate DATASET_ID --sizes 1,10,30,100,300,1000 --repeats 128
 pixi run sea evaluate DATASET_ID --output var/evaluation.json
 ```
 
-大きい集合の校正は計算時間が増えます。初回構築は最大100分子で校正し、それ以上はMonte Carloで評価します。評価コマンドは化合物を全標的横断のMurcko scaffoldで分割し、学習側だけで背景モデルを再推定します。既知標的へのRecall@1/5/10・MRRを最大Tanimoto法と比較します。未測定ペアを陰性とは見なしません。既定で最大100クエリを評価します。
+Calibration for larger sets takes longer. The initial build calibrates set sizes up to 100 molecules and uses Monte Carlo evaluation for larger sets. The evaluation command splits compounds by Murcko scaffold across all targets and recalibrates the background model using only the training partition. It compares Recall@1/5/10 and MRR for known-target retrieval against a maximum-Tanimoto baseline. Unmeasured pairs are not treated as negatives. Evaluation uses at most 100 queries by default.
 
-## Agentからの利用
+## Agent access
 
-環境変数 `SEA_API_KEY` にキー、`SEA_DATASET_ID` にdataset IDを設定します。
+Set `SEA_API_KEY` to your API key and `SEA_DATASET_ID` to a dataset ID.
 
 ```bash
 curl -H "X-API-Key: $SEA_API_KEY" http://127.0.0.1:8000/api/v1/datasets
 ```
 
-[examples/agent.py](examples/agent.py) は要求の送信、状態確認、結果取得までを実行します。
+[examples/agent.py](examples/agent.py) submits a request, polls its status, and retrieves the result:
 
 ```bash
 pixi run python examples/agent.py
 ```
 
-`POST /api/v1/predictions` の `queries` は集合の配列です。`[["CCO"],["CCCO"]]` は分子別検索、`[["CCO","CCCO"]]` は1集合の検索です。`POST /api/v1/comparisons` は `left` と `right` を受け取ります。どちらも `dataset_id` が必須で、HTTP 202と `job_id` を返します。
+For `POST /api/v1/predictions`, `queries` is an array of ligand sets. `[["CCO"],["CCCO"]]` searches each molecule separately; `[["CCO","CCCO"]]` searches one ensemble. `POST /api/v1/comparisons` accepts `left` and `right` ligand sets. Both endpoints require `dataset_id` and return HTTP 202 with a `job_id`.
 
-- `GET /api/v1/jobs/{id}`：状態と進捗
-- `GET /api/v1/jobs/{id}/result`：JSON、`?format=csv` でCSV
-- `POST /api/v1/jobs/{id}/cancel`：取消
-- `GET /api/v1/jobs`：自分の直近100件
-- `GET /api/v1/targets?dataset_id=...&q=...`：標的検索
+- `GET /api/v1/jobs/{id}`: job status and progress.
+- `GET /api/v1/jobs/{id}/result`: JSON results; add `?format=csv` for CSV.
+- `POST /api/v1/jobs/{id}/cancel`: request cancellation.
+- `GET /api/v1/jobs`: your most recent 100 jobs.
+- `GET /api/v1/targets?dataset_id=...&q=...`: search reference targets.
 
-既定上限は要求あたり100分子、集合比較は片側1,000分子、body 10 MB。`SEA_MAX_QUERY_MOLECULES`、`SEA_MAX_SET_MOLECULES`、`SEA_MAX_UPLOAD_BYTES`で変更できます。入力不正はHTTP 422、認証失敗401、他ユーザーのジョブは404、未完了の結果取得は409です。
+Default limits are 100 molecules per prediction request, 1,000 molecules per set comparison side, and a 10 MB request body. Configure these with `SEA_MAX_QUERY_MOLECULES`, `SEA_MAX_SET_MOLECULES`, and `SEA_MAX_UPLOAD_BYTES`. Invalid inputs return HTTP 422, authentication failures return 401, another user's jobs return 404, and requests for unfinished results return 409.
 
-## 研究室での共有
+## Sharing within a lab
 
-同一ホストでAPIと `pixi run worker` を実行します。workerは既定2プロセス、`pixi run sea worker --count 4` で変更可能です。supervisor再起動時は中断ジョブを再キューします。計算は決定的で、再実行による外部への書込みはありません。サービスDBとデータセットをバックアップしてください。ジョブは自動削除しません。
+Run the API and `pixi run worker` on the same host. The worker supervisor starts two processes by default; use `pixi run sea worker --count 4` to change this. Restarting the supervisor requeues interrupted jobs. Computation is deterministic, and retrying a job has no external write effects. Back up the service database and datasets. Jobs are not deleted automatically.
 
-利用者ごとにキーを発行してください。ログインは8時間のHttpOnly・SameSite=Strict cookieを使用し、APIキーをブラウザストレージには保存しません。TLSを使用する共有環境では `SEA_SECURE_COOKIE=1` とし、[docs/Caddyfile](docs/Caddyfile)を参考にTLSリバースプロキシを配置します。APIキー発行・DB構築はサーバー管理者のCLI操作です。APIは127.0.0.1へバインドし、プロキシだけを研究室ネットワークへ公開します。
+Issue a separate API key for each user or agent. Browser sign-in uses an eight-hour HttpOnly, SameSite=Strict session cookie; API keys are not saved in browser storage. For shared deployments over TLS, set `SEA_SECURE_COOKIE=1` and configure a TLS reverse proxy using [docs/Caddyfile](docs/Caddyfile) as a starting point. Key issuance and database construction are administrator CLI operations. Bind the API to 127.0.0.1 and expose only the proxy to the lab network.
 
-## 検証と制約
+## Validation and limitations
 
 ```bash
 pixi run test
 ```
 
-計算詳細は [docs/method.md](docs/method.md)、今回の動作検証は [docs/validation.md](docs/validation.md) を参照してください。原著のDaylightフィンガープリントとMDDRをRDKitとChEMBLへ置換するため、原著の数値一致は主張しません。E値は結合確率ではありません。Monte Carloの既定試行数999ではp値の最小値は0.001であり、多数の標的を検索する場合に有意性の分解能が不足することがあります。
+See [docs/method.md](docs/method.md) for calculation details and [docs/validation.md](docs/validation.md) for the recorded checks. RDKit and ChEMBL replace the original Daylight fingerprints and MDDR dataset, so numerical agreement with the original paper is not claimed. E-values are not binding probabilities. With the default 999 Monte Carlo trials, the smallest possible p-value is 0.001; this resolution may be insufficient when searching many targets.
 
-ソースコードはMIT。合成デモはCC0。ChEMBL由来データはCC BY-SA 3.0で、ソフトウェアとは別のライセンスです。構築データの再配布時にはmanifestの出典・版情報も含めてください。
+Change the Monte Carlo trial count with `sea build --trials 99999` or `sea calibrate DATASET_ID --trials 99999`. More trials improve p-value resolution and increase computation time. The result's `execution` field records job duration and worker peak RSS in KiB.
 
-Monte Carlo試行数は `sea build --trials 99999` または `sea calibrate DATASET_ID --trials 99999` で変更できます。試行数を増やすとp値の分解能が上がり、計算時間も増えます。結果の `execution` にジョブ時間とworkerのピークRSS（KiB）を記録します。
+Source code is licensed under MIT. The synthetic demo data is CC0. ChEMBL-derived data uses CC BY-SA 3.0, separately from the software license. Include the manifest's attribution and release information when redistributing a built dataset.
