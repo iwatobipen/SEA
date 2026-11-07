@@ -71,6 +71,23 @@ pixi run sea evaluate DATASET_ID --output var/evaluation.json
 
 Calibration for larger sets takes longer. The initial build calibrates set sizes up to 100 molecules and uses Monte Carlo evaluation for larger sets. The evaluation command splits compounds by Murcko scaffold across all targets and recalibrates the background model using only the training partition. It compares Recall@1/5/10 and MRR for known-target retrieval against a maximum-Tanimoto baseline. Unmeasured pairs are not treated as negatives. Evaluation uses at most 100 queries by default.
 
+## Target families and species
+
+ChEMBL search results display the preferred target name, ChEMBL target ID, protein family, organism name, and NCBI taxonomy ID in the web interface. The same information is available in JSON results, CSV exports, and `/api/v1/targets`. Family labels come from ChEMBL's protein classification hierarchy, linked through target components. GPCR, Kinase, Ion channel, Nuclear receptor, and Transporter labels summarize their corresponding ancestors; other targets retain a ChEMBL category such as Protease or Hydrolase. All assigned classification paths are preserved, including multiple classifications. Families are not inferred from target names.
+
+New `sea build` runs include this metadata automatically. To add annotations to an existing dataset without rebuilding fingerprints or recalibrating scores:
+
+```bash
+pixi run sea datasets
+pixi run sea annotate DATASET_ID --sqlite var/downloads/chembl_37/chembl_37_sqlite/chembl_37.db
+```
+
+Replace `DATASET_ID` with the 20-character ID of the matching ChEMBL dataset printed by the first command. Use the same source SQLite file used to build that dataset. The annotation command verifies both the release and the source SHA256, then writes an atomic annotation file under `$SEA_HOME/annotations/`. The original dataset ID, fingerprints, calibration, stored scores, and completed jobs remain intact. Both existing and future job results are enriched when retrieved. Classification-file updates are picked up without restarting the service; refresh the browser and reopen an existing result to see them.
+
+The JSON `target` object includes `id`, `name`, `family`, `families`, `protein_classes` (an array of classification paths), `organism`, and `tax_id`. Results enriched by a separate annotation file include its provenance in `target_annotations`. CSV exports add `target_family`, `target_families`, `target_protein_classes`, `target_organism`, and `target_tax_id`. Target search also matches family names and species. Missing classifications are shown as Unclassified; unavailable species information is left empty. Synthetic demo sets do not receive biological family or species assignments.
+
+The default reference build filters to human proteins, so its annotated species is normally Homo sapiens (9606). Annotations still use each target's actual ChEMBL organism and taxonomy ID rather than assuming the configured species.
+
 ## Agent access
 
 Set `SEA_API_KEY` to your API key and `SEA_DATASET_ID` to a dataset ID.

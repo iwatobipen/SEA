@@ -9,6 +9,7 @@ from .chemistry import molecule, Molecule, FP_SPEC, STANDARDIZATION
 from rdkit import DataStructs
 from functools import lru_cache
 from .statistics import calibrate
+from .annotations import read_target_annotations, validate_release
 
 
 def home():
@@ -85,9 +86,7 @@ def list_datasets():
 
 def build_chembl(source, release, settings, repeats=128, empirical_trials=999):
     con = sqlite3.connect(f"file:{Path(source).resolve()}?mode=ro", uri=True)
-    version = con.execute("SELECT * FROM version").fetchall()
-    if release.casefold() not in str(version).casefold():
-        raise ValueError(f"指定版 {release} がSQLiteのversion情報 {version} と一致しません")
+    version = validate_release(con, release)
     query = """
     SELECT td.chembl_id, td.pref_name, cs.canonical_smiles, a.standard_type,
            a.pchembl_value, a.activity_id, a.assay_id, a.doc_id,
@@ -115,7 +114,7 @@ def build_chembl(source, release, settings, repeats=128, empirical_trials=999):
     from collections import Counter, defaultdict
     counts = Counter()
     measurements = defaultdict(list)
-    names, evidence = {}, defaultdict(list)
+    evidence = defaultdict(list)
     cache = {}
     for tid, name, smiles, kind, value, aid, assay, doc, relation, validity, duplicate, mid in con.execute(query, parameters):
         counts["candidate_rows"] += 1
@@ -130,14 +129,14 @@ def build_chembl(source, release, settings, repeats=128, empirical_trials=999):
             counts["invalid_structure"] += 1
             continue
         measurements[(tid, canonical, kind)].append(float(value))
-        names[tid] = name
         evidence[(tid, canonical)].append({"activity_id": aid, "assay_id": assay, "doc_id": doc, "molecule_id": mid, "type": kind, "pchembl": value})
+    metadata = read_target_annotations(con, {tid for tid, _, _ in measurements})
     con.close()
     actives = defaultdict(set)
     for (tid, smiles, kind), values in measurements.items():
         if statistics.median(values) >= settings.get("min_pchembl", 6):
             actives[tid].add(smiles)
-    targets = [{"id": tid, "name": names[tid], "smiles": sorted(s),
+    targets = [{**metadata[tid], "smiles": sorted(s),
                 "evidence": {m: evidence[(tid,m)] for m in sorted(s)}}
                for tid,s in sorted(actives.items()) if len(s) >= settings.get("min_ligands", 10)]
     if not targets:

@@ -8,6 +8,7 @@ from functools import lru_cache
 from .data import home, load_dataset
 from .chemistry import normalize, raw_score
 from .statistics import significance
+from .annotations import target_info, load_annotations
 
 
 class Cancelled(Exception):
@@ -92,6 +93,7 @@ def process(job):
         data, structures = load_dataset(payload["dataset_id"])
         pool = list(structures.values())
         model = data["model"]
+        annotations = load_annotations(payload["dataset_id"])
         output = {"dataset": data["manifest"], "threshold": model["threshold"], "results": []}
         if job["kind"] == "comparison":
             a, ar = normalize(payload["left"])
@@ -115,10 +117,12 @@ def process(job):
             result = {"query_index": index, "raw_score": score, "contributing_pairs": count,
                       "left_size": len(a), "right_size": len(b), "similar_ligands": evidence, **stat}
             if target:
-                result["target"] = {k:target[0][k] for k in ("id","name")}
+                result["target"] = target_info(target[0], annotations)
             output["results"].append(result)
             with connection() as con:
                 con.execute("UPDATE jobs SET progress=?, updated=? WHERE id=?", ((i+1)/len(comparisons),time.time(),jid))
+        if annotations:
+            output["target_annotations"] = {k:v for k,v in annotations.items() if k != "targets"}
         output["results"].sort(key=lambda r: (r["query_index"] or 0, r["log_e_value"], -r["raw_score"]))
         if job["kind"] != "comparison":
             top = payload.get("top_k",20)

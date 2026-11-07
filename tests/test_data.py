@@ -13,8 +13,14 @@ def test_chembl_filters_and_deterministic_build(tmp_path,monkeypatch):
     CREATE TABLE activities(molregno INTEGER, assay_id INTEGER, standard_type TEXT,pchembl_value REAL,activity_id INTEGER,doc_id INTEGER,standard_relation TEXT,data_validity_comment TEXT,potential_duplicate INTEGER);
     CREATE TABLE assays(assay_id INTEGER,tid INTEGER,confidence_score INTEGER,assay_type TEXT);
     INSERT INTO assays VALUES(1,1,9,'B'); INSERT INTO assays VALUES(2,1,8,'B');
-    CREATE TABLE target_dictionary(tid INTEGER,chembl_id TEXT,pref_name TEXT,tax_id INTEGER,target_type TEXT);
-    INSERT INTO target_dictionary VALUES(1,'CHEMBL_TARGET','Test protein',9606,'SINGLE PROTEIN');
+    CREATE TABLE target_dictionary(tid INTEGER,chembl_id TEXT,pref_name TEXT,tax_id INTEGER,target_type TEXT,organism TEXT);
+    INSERT INTO target_dictionary VALUES(1,'CHEMBL_TARGET','Test protein',9606,'SINGLE PROTEIN','Homo sapiens');
+    CREATE TABLE protein_classification(protein_class_id INTEGER,parent_id INTEGER,pref_name TEXT,class_level INTEGER);
+    INSERT INTO protein_classification VALUES(0,NULL,'Protein class',0),(1,0,'Enzyme',1),(6,1,'Kinase',2);
+    CREATE TABLE target_components(tid INTEGER,component_id INTEGER);
+    INSERT INTO target_components VALUES(1,1);
+    CREATE TABLE component_class(component_id INTEGER,protein_class_id INTEGER);
+    INSERT INTO component_class VALUES(1,6);
     CREATE TABLE molecule_dictionary(molregno INTEGER,chembl_id TEXT);
     CREATE TABLE molecule_hierarchy(molregno INTEGER,parent_molregno INTEGER);
     CREATE TABLE compound_structures(molregno INTEGER,canonical_smiles TEXT);
@@ -35,6 +41,9 @@ def test_chembl_filters_and_deterministic_build(tmp_path,monkeypatch):
     assert first==second
     data,pool=load_dataset(first)
     assert len(data['targets'][0]['smiles'])==11
+    assert data['targets'][0]['family']=='Kinase'
+    assert data['targets'][0]['organism']=='Homo sapiens'
+    assert data['targets'][0]['tax_id']==9606
     assert data['manifest']['counts']['quality_excluded']==1
     assert data['manifest']['data_license']=='CC-BY-SA-3.0'
     assert all(data['targets'][0]['evidence'].values())

@@ -16,6 +16,7 @@ from rdkit.Chem.Draw import rdMolDraw2D
 from .chemistry import normalize, molecule, InputError
 from .data import list_datasets, load_dataset
 from .jobs import connection, authenticate, hashed, submit
+from .annotations import enrich_results, target_info, load_annotations
 
 app = FastAPI(title="SEA Open", version="0.1.0", description="Ligand ensemble similarity. E-values are expected random hits, not binding probabilities.")
 WEB = Path(__file__).parent/"web"
@@ -34,6 +35,8 @@ async def request_limits(request: Request, call_next):
                 return Response('{"detail":"Request body too large"}',413,media_type="application/json")
         request._body = bytes(body)
     response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "same-origin"
     return response
@@ -118,9 +121,23 @@ class PairEvidence(BaseModel):
     tanimoto: float
 
 
+class TargetInfo(BaseModel):
+    id: str
+    name: str
+    family: str | None = None
+    families: list[str] = Field(default_factory=list)
+    protein_classes: list[list[str]] = Field(default_factory=list)
+    organism: str | None = None
+    tax_id: int | None = None
+
+
+class TargetSummary(TargetInfo):
+    ligand_count: int
+
+
 class ScoreResult(BaseModel):
     query_index: int | None
-    target: dict[str, str] | None = None
+    target: TargetInfo | None = None
     raw_score: float
     contributing_pairs: int
     left_size: int
@@ -142,6 +159,7 @@ class ResultBundle(BaseModel):
     normalization: dict | list
     results: list[ScoreResult]
     execution: dict
+    target_annotations: dict | None = None
 
 
 def validate_sets(dataset_id, sets, maximum):
@@ -208,15 +226,19 @@ def result(job_id:str,format:Literal["json","csv"]="json",user=Depends(owner)):
     row = get_job(job_id,user)
     if row["status"]!="completed":
         raise HTTPException(409,{"status":row["status"],"error":row["error"]})
-    data = json.loads(row["result"])
+    data = enrich_results(json.loads(row["result"]))
     if format=="json":
         return data
     out = io.StringIO()
-    fields = ["query_index","target_id","target_name","raw_score","z_score","p_value","log_p_value","e_value","log_e_value","method","p_resolution","comparisons","dataset_id","model_id"]
+    fields = ["query_index","target_id","target_name","target_family","target_families","target_organism","target_tax_id","target_protein_classes","raw_score","z_score","p_value","log_p_value","e_value","log_e_value","method","p_resolution","comparisons","dataset_id","model_id"]
     writer = csv.DictWriter(out,fieldnames=fields,extrasaction="ignore")
     writer.writeheader()
     for r in data["results"]:
-        record = {**r,"target_id":r.get("target",{}).get("id"),"target_name":r.get("target",{}).get("name"),"dataset_id":data["dataset"]["id"],"model_id":data["dataset"]["model_id"]}
+        target = r.get("target") or {}
+        record = {**r,"target_id":target.get("id"),"target_name":target.get("name"),"dataset_id":data["dataset"]["id"],"model_id":data["dataset"]["model_id"]}
+        record.update({"target_family":target.get("family"),"target_families":"; ".join(target.get("families",[])),
+                       "target_organism":target.get("organism"),"target_tax_id":target.get("tax_id"),
+                       "target_protein_classes":json.dumps(target.get("protein_classes",[]),ensure_ascii=False)})
         # Prevent spreadsheet formulas in user/data-supplied strings.
         writer.writerow({k:("'"+v if isinstance(v,str) and v.startswith(("=","+","-","@")) else v) for k,v in record.items()})
     return Response(out.getvalue(),media_type="text/csv",headers={"Content-Disposition":f'attachment; filename="{job_id}.csv"'})
@@ -227,7 +249,7 @@ def datasets(user=Depends(owner)):
     return list_datasets()
 
 
-@app.get("/api/v1/targets",operation_id="list_targets")
+@app.get("/api/v1/targets",response_model=list[TargetSummary],operation_id="list_targets")
 def targets(dataset_id:str,q:str="",offset:int=0,limit:int=50,user=Depends(owner)):
     if offset<0 or not 1<=limit<=1000:
         raise HTTPException(422,"Invalid pagination")
@@ -235,7 +257,9 @@ def targets(dataset_id:str,q:str="",offset:int=0,limit:int=50,user=Depends(owner
         data,_ = load_dataset(dataset_id)
     except (ValueError,FileNotFoundError) as exc:
         raise HTTPException(404,str(exc))
-    return [{"id":t["id"],"name":t["name"],"ligand_count":len(t["smiles"])} for t in data["targets"] if q.lower() in (t["id"]+" "+t["name"]).lower()][offset:offset+limit]
+    annotations = load_annotations(dataset_id)
+    enriched = [{**target_info(t, annotations),"ligand_count":len(t["smiles"])} for t in data["targets"]]
+    return [t for t in enriched if q.casefold() in " ".join(str(t.get(k) or "") for k in ("id","name","family","organism","tax_id")).casefold()][offset:offset+limit]
 
 
 @app.get("/api/v1/structure",operation_id="render_structure")

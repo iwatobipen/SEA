@@ -76,6 +76,9 @@ def main():
     calibration.add_argument("--sizes",default="1,10,30,100,300,1000")
     calibration.add_argument("--repeats",type=int,default=128)
     calibration.add_argument("--trials",type=int,default=999)
+    annotation = subs.add_parser("annotate")
+    annotation.add_argument("dataset_id")
+    annotation.add_argument("--sqlite",required=True)
     evaluation = subs.add_parser("evaluate")
     evaluation.add_argument("dataset_id")
     evaluation.add_argument("--output",default="var/evaluation.json")
@@ -102,6 +105,9 @@ def main():
         data,_=load_dataset(args.dataset_id)
         provenance={k:v for k,v in data["manifest"].items() if k not in ("id","model_id","created_at","fingerprint","standardization","rdkit_version","target_count","molecule_count")}
         print(save_dataset(data["targets"],provenance,sizes=tuple(map(int,args.sizes.split(","))),repeats=args.repeats,empirical_trials=args.trials))
+    elif args.command=="annotate":
+        from .annotations import annotate_dataset
+        print(json.dumps(annotate_dataset(args.dataset_id,args.sqlite),ensure_ascii=False,indent=2))
     elif args.command=="evaluate":
         from .evaluate import evaluate
         result = evaluate(args.dataset_id)

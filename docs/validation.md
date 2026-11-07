@@ -36,3 +36,10 @@ A full ChEMBL 37 reference dataset was subsequently built with 1,517 targets and
 The follow-up regression suite passed all 12 tests in 2.87 seconds, including the exact zero-score result and reuse of the same Monte Carlo samples across jobs. On one observed single-molecule ChEMBL 37 query, scoring and significance evaluation across 1,517 targets took 49.64 seconds, excluding dataset loading: 1,469 comparisons used the exact zero-score result and 48 used Monte Carlo sampling. Latency depends on the query, ligand-set sizes, and worker cache state; this is not a general performance guarantee or a biological accuracy benchmark.
 
 The web interface now displays waiting/running status and percentage progress, and disables submission buttons while a job is active to prevent accidental duplicate jobs.
+
+
+## Target-family and species annotations
+
+The full ChEMBL 37 reference dataset was annotated from its original SQLite source after verifying the source release and SHA256. All 1,517 targets received an organism and classification record. Checked examples include CHEMBL233 (Mu-type opioid receptor, GPCR), CHEMBL203 (Epidermal growth factor receptor, Kinase), and CHEMBL240 (KCNH2, Ion channel). All targets in this human-filtered reference database have organism Homo sapiens and taxonomy ID 9606.
+
+The regression suite passed 15 tests in 3.18 seconds. Tests cover ancestry-based family labels, multiple classification paths, missing metadata, species from different organisms, immutable dataset preservation, source checksum validation, annotation-cache refresh, historical result enrichment, new job metadata, CSV columns, and target search. The existing seven ChEMBL jobs (140 returned target rows) were validated against the new response schema with no missing species or family fields; their stored scores and result records were not rewritten. Browser smoke checks also verified target ID, GPCR/Kinase/Ion channel labels, and species/taxonomy columns using a temporary rendering fixture that was not saved to any dataset.
