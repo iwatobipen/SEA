@@ -1,0 +1,10 @@
+{
+  "organism_tax_id": 9606,
+  "target_type": "SINGLE PROTEIN",
+  "assay_type": "B",
+  "confidence_score": 9,
+  "activity_types": ["Ki", "Kd", "IC50"],
+  "standard_relation": "=",
+  "min_pchembl": 6.0,
+  "min_ligands": 10
+}

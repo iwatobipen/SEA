@@ -1,0 +1,7 @@
+# Replace sea.lab.example with your lab DNS name. Install Caddy separately.
+sea.lab.example {
+    tls internal
+    reverse_proxy 127.0.0.1:8000
+}
+# Start API with SEA_SECURE_COOKIE=1. Trust Caddy's internal CA on lab clients.
+# Restrict access to the lab network using the host firewall.

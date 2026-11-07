@@ -1,0 +1,29 @@
+[workspace]
+name = "sea-open"
+version = "0.1.0"
+description = "Open-source Similarity Ensemble Approach"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = "3.12.*"
+rdkit = ">=2024.09,<2027"
+numpy = ">=2,<3"
+scipy = ">=1.14,<2"
+fastapi = ">=0.115,<1"
+uvicorn = ">=0.32,<1"
+pydantic = ">=2,<3"
+httpx = ">=0.27,<1"
+pytest = ">=8,<10"
+python-multipart = ">=0.0.18"
+
+[activation.env]
+PYTHONPATH = "$PIXI_PROJECT_ROOT/src"
+SEA_HOME = "$PIXI_PROJECT_ROOT/var"
+
+[tasks]
+sea = "python -m sea"
+serve = "uvicorn sea.api:app --host 127.0.0.1 --port 8000"
+worker = "python -m sea worker"
+demo = "python -m sea demo"
+test = "pytest -q"

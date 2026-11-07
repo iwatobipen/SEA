@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=70"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sea-open"
+version = "0.1.0"
+description = "Reproducible ligand-set similarity with a shared web and agent API"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = ["rdkit", "numpy", "scipy", "fastapi", "uvicorn", "httpx", "pydantic>=2", "python-multipart"]
+
+[project.scripts]
+sea = "sea.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+sea = ["web/*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
