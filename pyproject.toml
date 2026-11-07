@@ -17,7 +17,7 @@ sea = "sea.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-sea = ["web/*"]
+sea = ["web/*", "web/vendor/**/*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

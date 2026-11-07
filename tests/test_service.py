@@ -128,3 +128,31 @@ def test_background_samples_are_reused_across_jobs(service,monkeypatch):
     assert (1,1) in cache
     assert background_cache(str(home().resolve()),dataset) is cache
     assert background_cache(str(home().resolve()),'different-dataset') is not cache
+
+
+def test_structure_import_and_prediction(service, monkeypatch):
+    from rdkit import Chem
+    client,dataset,a,b=service
+    mol = Chem.MolFromSmiles('CCO')
+    mol.SetProp('_Name','Ethanol')
+    sdf = Chem.MolToMolBlock(mol)+'$$$$\n'
+    payload={'format':'sdf','content':sdf}
+    assert client.post('/api/v1/structures/import',json=payload).status_code==401
+    response=client.post('/api/v1/structures/import',headers=a,json=payload)
+    assert response.status_code==200,response.text
+    converted=response.json()
+    assert converted['molecules']==[{'record':1,'name':'Ethanol','smiles':'CCO'}]
+    jid=client.post('/api/v1/predictions',headers=a,json={
+        'dataset_id':dataset,'queries':[[m['smiles']] for m in converted['molecules']]
+    }).json()['job_id']
+    process(claim('test'))
+    assert client.get(f'/api/v1/jobs/{jid}/result',headers=a).json()['results'][0]['raw_score']>0
+    invalid=client.post('/api/v1/structures/import',headers=a,json={'format':'sdf','content':sdf+'invalid\n$$$$\n'})
+    assert invalid.status_code==422
+    assert invalid.json()['detail']['records'][0]['record']==2
+    assert client.post('/api/v1/structures/import',headers=a,json={'format':'pdb','content':'CCO'}).status_code==422
+    monkeypatch.setenv('SEA_MAX_SET_MOLECULES','1')
+    assert client.post('/api/v1/structures/import',headers=a,json={'format':'smiles','content':'CCO\nCCCO'}).json()['detail']['code']=='too_many_molecules'
+    assert client.post('/api/v1/session',json={'api_key':a['X-API-Key']}).status_code==200
+    assert client.post('/api/v1/structures/import',json=payload).status_code==403
+    assert client.post('/api/v1/structures/import',headers={'X-SEA-Request':'1'},json=payload).status_code==200

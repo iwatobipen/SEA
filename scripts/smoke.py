@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import httpx
+from rdkit import Chem
 from sea.cli import demo
 from sea.jobs import create_key
 
@@ -27,7 +28,11 @@ try:
         time.sleep(.5)
     else:
         raise RuntimeError('Services failed to start')
-    subprocess.run(['node','scripts/browser-smoke.mjs'],check=True,env={**os.environ,'SEA_SMOKE_KEY':key},timeout=60)
+    blocks=[Chem.MolToMolBlock(Chem.MolFromSmiles(smiles)) for smiles in ('CCO','CCCO')]
+    subprocess.run(['node','scripts/browser-smoke.mjs'],check=True,env={
+        **os.environ,'SEA_SMOKE_KEY':key,'SEA_SMOKE_MOL':blocks[0],
+        'SEA_SMOKE_SDF':''.join(block+'$$$$\n' for block in blocks),
+    },timeout=60)
     print(json.dumps({'elapsed_seconds':time.perf_counter()-started,'dataset_id':dataset}))
 finally:
     for process in processes:

@@ -17,6 +17,7 @@ from .chemistry import normalize, molecule, InputError
 from .data import list_datasets, load_dataset
 from .jobs import connection, authenticate, hashed, submit
 from .annotations import enrich_results, target_info, load_annotations
+from .structure_inputs import StructureFormat, StructureImportError, import_structures
 
 app = FastAPI(title="SEA Open", version="0.1.0", description="Ligand ensemble similarity. E-values are expected random hits, not binding probabilities.")
 WEB = Path(__file__).parent/"web"
@@ -99,6 +100,32 @@ class Comparison(BaseModel):
     dataset_id: str
     left: list[str] = Field(min_length=1)
     right: list[str] = Field(min_length=1)
+
+
+class StructureImport(BaseModel):
+    format: StructureFormat
+    content: str = Field(min_length=1, description="UTF-8 SDF, MOL (V2000/V3000), SMILES lines, or CSV text with a smiles column.")
+
+
+class ImportedMolecule(BaseModel):
+    record: int
+    name: str
+    smiles: str
+
+
+class StructureImportResult(BaseModel):
+    format: StructureFormat
+    count: int
+    molecules: list[ImportedMolecule]
+
+
+@app.post("/api/v1/structures/import", response_model=StructureImportResult, operation_id="import_structures")
+def structures_import(body: StructureImport, user=Depends(owner)):
+    """Convert all records to isomeric SMILES; invalid records reject the whole import."""
+    try:
+        return import_structures(body.content, body.format, int(os.getenv("SEA_MAX_SET_MOLECULES", 1000)))
+    except StructureImportError as exc:
+        raise HTTPException(422, detail=exc.args[0]) from exc
 
 
 class JobAccepted(BaseModel):

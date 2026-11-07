@@ -25,6 +25,22 @@ Open http://127.0.0.1:8000 and sign in with your API key. Interactive API docume
 
 Reference datasets and the service database are stored in `SEA_HOME` (default: `var/`). Run `pixi run sea datasets` to list dataset IDs. If your sandbox does not allow writes to `/tmp`, create a temporary directory inside the workspace and use `TMPDIR="$PWD/.cache/tmp" pixi …`.
 
+## Structure input
+
+Target prediction and both sides of set comparison support three input methods:
+
+- Paste SMILES, one molecule per line.
+- Click **構造を描く** to open the bundled [Ketcher molecular editor](https://github.com/epam/ketcher). Draw a molecule and click **入力に追加** to append it to the selected input. Add separate compounds one at a time; disconnected fragments in one drawing represent one input structure. Closing the editor without adding leaves the input unchanged.
+- Select a structure file to replace the selected input after validation. Supported extensions are `.sdf`/`.sd` (multiple records), `.mol` (one molecule, V2000 or V3000), `.smi`/`.smiles`/`.txt` (SMILES with an optional whitespace-separated name), and `.csv` (a `smiles` column, with an optional `name` column). CSV supports quoted fields and embedded newlines. Files must contain UTF-8 text.
+
+Imported structures appear as isomeric SMILES in the input area for review before submitting a search or comparison. Record order and repeated molecules are retained during import. Stereochemistry, charges, and disconnected fragments are preserved in these SMILES; the existing SEA standardization and ensemble deduplication run when the job is submitted. SDF properties other than the molecule name are not used in the search.
+
+Use concrete small-molecule structures. Query atoms/bonds, R groups, and reactions cannot be used as SEA ligands. On narrow screens, scroll horizontally inside the Ketcher editor to reach the full toolbar and drawing area.
+
+An invalid structure rejects the entire import and displays its one-based record number. Previously entered structures remain intact. CSV record numbers count data rows after the header; SMILES text uses line numbers; SDF uses molecule record numbers. Imports allow up to 1,000 records by default (`SEA_MAX_SET_MOLECULES`). Prediction and comparison limits still apply when submitting the resulting molecules. The browser allows files up to 10 MB, and the API request limit includes JSON encoding overhead, so files close to this size may need to be split.
+
+The editor and all its assets are hosted locally, with no CDN or external structure-conversion service. The Ketcher version, archive checksum, and Apache license are recorded in [the bundled editor notice](src/sea/web/vendor/ketcher/README.md). No additional Pixi dependencies or frontend build step are required.
+
 ## Building a ChEMBL reference database
 
 Choose a release from the [official distribution](https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/). The `--sha256` argument must be the SHA256 checksum of the **compressed SQLite archive `chembl_<release>_sqlite.tar.gz`**, exactly as downloaded. It is not the checksum of the extracted `.db` file, `checksums.txt`, or another ChEMBL download such as the SDF, MySQL, or PostgreSQL archive.
@@ -103,6 +119,31 @@ pixi run python examples/agent.py
 ```
 
 For `POST /api/v1/predictions`, `queries` is an array of ligand sets. `[["CCO"],["CCCO"]]` searches each molecule separately; `[["CCO","CCCO"]]` searches one ensemble. `POST /api/v1/comparisons` accepts `left` and `right` ligand sets. Both endpoints require `dataset_id` and return HTTP 202 with a `job_id`.
+
+Agents can convert structure files with authenticated `POST /api/v1/structures/import`. Send JSON with `format` (`sdf`, `mol`, `smiles`, or `csv`) and `content` (the file text). The response contains `format`, `count`, and `molecules`, each with `record`, `name`, and `smiles`. Submit these SMILES through the existing prediction or comparison endpoints:
+
+```python
+import os
+from pathlib import Path
+import httpx
+
+headers = {"X-API-Key": os.environ["SEA_API_KEY"]}
+base = "http://127.0.0.1:8000/api/v1"
+converted = httpx.post(
+    f"{base}/structures/import", headers=headers,
+    json={"format": "sdf", "content": Path("molecules.sdf").read_text(encoding="utf-8")},
+)
+converted.raise_for_status()
+smiles = [m["smiles"] for m in converted.json()["molecules"]]
+job = httpx.post(
+    f"{base}/predictions", headers=headers,
+    json={"dataset_id": os.environ["SEA_DATASET_ID"], "queries": [[s] for s in smiles]},
+)
+job.raise_for_status()
+print(job.json()["job_id"])
+```
+
+Use `"queries": [smiles]` for a single ensemble. Invalid imports return HTTP 422 with structured error details, including `records` when individual structures are invalid; they never return a partial molecule list or create a job.
 
 - `GET /api/v1/jobs/{id}`: job status and progress.
 - `GET /api/v1/jobs/{id}/result`: JSON results; add `?format=csv` for CSV.
