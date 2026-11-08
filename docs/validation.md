@@ -51,3 +51,9 @@ The regression suite passed 27 tests in 3.18 seconds after adding the structure-
 The browser smoke check imported SDF and MOL into target prediction and SMI/CSV into the two comparison inputs, verified that an invalid SDF left the previous input intact, rejected an empty drawing, drew a carbon-carbon bond through Ketcher's actual toolbar and browser pointer events, and appended it exactly once despite a double click. Editor structures were also added to both comparison inputs. Two imported molecules were submitted through the real API and worker, producing six result rows with the existing target metadata columns. The check took 8.07 seconds and recorded no external HTTP requests. Desktop and mobile screenshots include both the editor dialog and completed results; the mobile dialog was checked for horizontal overflow, with scrolling contained inside the editor viewport.
 
 A Python wheel build was checked to contain the structure-import module and all 21 bundled Ketcher assets and license notices. The wheel was approximately 9.18 MB; no frontend build or runtime Node installation is needed.
+
+## Background service scripts
+
+The regression suite passed 31 tests in 5.54 seconds after adding the start/stop controller. Service checks use real API and worker processes with an isolated data directory and port. They cover readiness, repeated startup without duplicate processes, repeated shutdown, termination of worker children, an occupied port, stale PID metadata pointing to an unrelated live process, and cleanup after API startup failure. Legacy integer PID files are also checked before upgrading their metadata.
+
+Both executable shell wrappers were exercised through the locked Pixi environment from outside the repository, using a data-directory path containing spaces and a custom port with one worker. Start, repeated start, stop, and repeated stop succeeded. Shell syntax checks and the Pixi `start`/`stop` task help commands also passed.

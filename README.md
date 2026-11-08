@@ -14,16 +14,52 @@ pixi run demo
 pixi run sea key alice
 ```
 
-Save the API key printed by the last command. Only its SHA256 hash is stored in the database. Start the worker and API server in separate terminals:
+Save the API key printed by the last command. Only its SHA256 hash is stored in the database. Start the API server and workers in the background:
 
 ```bash
-pixi run worker
-pixi run serve
+./scripts/start.sh
 ```
 
 Open http://127.0.0.1:8000 and sign in with your API key. Interactive API documentation is available at `/docs`, and the machine-readable specification is at `/openapi.json`. The demo contains synthetic alcohol, carboxylic acid, and aromatic compound sets; it cannot predict biological targets.
 
 Reference datasets and the service database are stored in `SEA_HOME` (default: `var/`). Run `pixi run sea datasets` to list dataset IDs. If your sandbox does not allow writes to `/tmp`, create a temporary directory inside the workspace and use `TMPDIR="$PWD/.cache/tmp" pixi …`.
+
+## Starting and stopping services
+
+Run these commands from the repository directory after `pixi install --locked` and the initial dataset/API-key setup above:
+
+```bash
+./scripts/start.sh
+./scripts/stop.sh
+```
+
+`start.sh` uses the locked Pixi environment, starts the API and a supervisor with two worker processes, and waits for API health and worker readiness before returning. The default URL is http://127.0.0.1:8000. Services continue running after the command or terminal exits. Repeating the start command keeps the existing processes; repeating the stop command succeeds when they are already stopped. The scripts can also be invoked by absolute path from another directory.
+
+`stop.sh` sends SIGTERM to the recorded API and worker supervisor and waits up to 30 seconds for shutdown. It verifies the executable, command, checkout, data directory, and process start time before signalling a PID. Stale PID files are discarded without signalling unrelated processes. Data, datasets, API keys, and completed results remain on disk. An interrupted running job is requeued when the worker supervisor next starts.
+
+Logs are appended to `var/logs/api.log` and `var/logs/worker.log`; PID metadata is stored alongside them. Inspect the logs with:
+
+```bash
+tail -f var/logs/api.log var/logs/worker.log
+```
+
+Configure the port and worker count on startup, or allow more time for shutdown:
+
+```bash
+./scripts/start.sh --port 8080 --workers 4
+./scripts/stop.sh --timeout 60
+```
+
+Stop services before starting them with different settings. Use `--host` to change the API bind address. For a separate data directory, use the same `SEA_HOME` for both commands; relative paths are resolved against the repository directory:
+
+```bash
+SEA_HOME="$PWD/var-lab" ./scripts/start.sh
+SEA_HOME="$PWD/var-lab" ./scripts/stop.sh
+```
+
+The custom directory must have its own reference dataset and API keys. Logs and PID metadata are stored under its `logs/` directory. Environment settings such as `SEA_SECURE_COOKIE` and query limits are inherited by newly started services. The scripts do not load `.env` files automatically.
+
+The equivalent Pixi tasks are `pixi run start` and `pixi run stop`; they also accept `--home /absolute/data/path`. For foreground development, run `pixi run serve` and `pixi run worker` in separate terminals and stop each with Ctrl+C. Stop foreground instances before switching to the background scripts. An occupied API port causes startup to fail; processes started during a failed startup are stopped, while previously running services are retained.
 
 ## Structure input
 
