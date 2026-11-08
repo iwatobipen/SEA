@@ -257,6 +257,8 @@ See [worker performance](docs/performance.md) for the measured speedup, cache be
 ./scripts/start.sh
 ```
 
+The [statistical precision and UX design study](docs/statistics-and-ux.md) examines fixed-budget refinement, simulation uncertainty, cached backgrounds, and progressive results. It includes an executed precision/cost experiment and proposes a future workflow; it does not change the current search defaults.
+
 Change the Monte Carlo trial count with `sea build --trials 99999` or `sea calibrate DATASET_ID --trials 99999`. More trials improve p-value resolution and increase computation time. The result's `execution` field records job duration and worker peak RSS in KiB.
 
 Source code is licensed under MIT. The synthetic demo data is CC0. ChEMBL-derived data uses CC BY-SA 3.0, separately from the software license. Include the manifest's attribution and release information when redistributing a built dataset.

@@ -1,0 +1,114 @@
+{
+  "dataset_id": "e898df53d9bb5240f087",
+  "model_id": "cdeb3d04e1375ad3c7dd",
+  "rdkit_version": "2026.09.2",
+  "numpy_version": "2.5.4",
+  "query": [
+    {
+      "row": 1,
+      "input": "COc1ccc2[nH]cc(c2c1)C(CC)CN",
+      "smiles": "CCC(CN)c1c[nH]c2ccc(OC)cc12",
+      "duplicate": false
+    }
+  ],
+  "target_count": 1517,
+  "unique_reference_sizes": 600,
+  "threshold": 0.56,
+  "seed": 42,
+  "load_seconds": 7.343094379000831,
+  "packed_index_seconds": 2.4124946990050375,
+  "measurements": [
+    {
+      "target_id": "CHEMBL5043",
+      "target_name": "Endoplasmic reticulum aminopeptidase 2",
+      "reference_size": 72,
+      "raw_score": 9.496935035190429,
+      "trials": 999,
+      "exceedances": 30,
+      "seconds": 0.018860814001527615,
+      "p_value": 0.031,
+      "e_value": 47.027,
+      "tail_probability_pointwise_95_interval": [
+        0.020350927294571417,
+        0.042593719636175593
+      ]
+    },
+    {
+      "target_id": "CHEMBL5043",
+      "target_name": "Endoplasmic reticulum aminopeptidase 2",
+      "reference_size": 72,
+      "raw_score": 9.496935035190429,
+      "trials": 9999,
+      "exceedances": 293,
+      "seconds": 0.17657662800047547,
+      "p_value": 0.0294,
+      "e_value": 44.5998,
+      "tail_probability_pointwise_95_interval": [
+        0.02608488018036183,
+        0.032798858689995984
+      ]
+    },
+    {
+      "target_id": "CHEMBL5043",
+      "target_name": "Endoplasmic reticulum aminopeptidase 2",
+      "reference_size": 72,
+      "raw_score": 9.496935035190429,
+      "trials": 99999,
+      "exceedances": 2849,
+      "seconds": 1.7540410270012217,
+      "p_value": 0.0285,
+      "e_value": 43.234500000000004,
+      "tail_probability_pointwise_95_interval": [
+        0.027467827272852297,
+        0.02954021146547523
+      ]
+    },
+    {
+      "target_id": "CHEMBL1946",
+      "target_name": "Melatonin receptor type 1B",
+      "reference_size": 687,
+      "raw_score": 56.46672876292568,
+      "trials": 999,
+      "exceedances": 60,
+      "seconds": 0.09592985699418932,
+      "p_value": 0.061,
+      "e_value": 92.53699999999999,
+      "tail_probability_pointwise_95_interval": [
+        0.04614149236270158,
+        0.0766364485754965
+      ]
+    },
+    {
+      "target_id": "CHEMBL1946",
+      "target_name": "Melatonin receptor type 1B",
+      "reference_size": 687,
+      "raw_score": 56.46672876292568,
+      "trials": 9999,
+      "exceedances": 714,
+      "seconds": 0.9386543209984666,
+      "p_value": 0.0715,
+      "e_value": 108.46549999999999,
+      "tail_probability_pointwise_95_interval": [
+        0.06643528591079421,
+        0.07663032433924186
+      ]
+    },
+    {
+      "target_id": "CHEMBL1946",
+      "target_name": "Melatonin receptor type 1B",
+      "reference_size": 687,
+      "raw_score": 56.46672876292568,
+      "trials": 99999,
+      "exceedances": 7230,
+      "seconds": 9.430899693004903,
+      "p_value": 0.07231,
+      "e_value": 109.69427,
+      "tail_probability_pointwise_95_interval": [
+        0.07070295871360475,
+        0.07392334722465813
+      ]
+    }
+  ],
+  "scope": "Sampling timings share one packed index; exclude loading, index construction, API and job queue. The seed/size streams are shared between budgets, so budgets are not independent replicates.",
+  "interpretation": "Fixed-budget Monte Carlo precision/cost study, not biological validation. Tail intervals are pointwise and cannot justify optional stopping or simultaneous coverage."
+}
