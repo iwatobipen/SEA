@@ -1,6 +1,6 @@
 # SEA Open
 
-An open-source implementation of the Similarity Ensemble Approach (SEA), which relates protein targets through the chemical similarity of their ligand sets. Built with Pixi, RDKit, and FastAPI, it provides a Japanese web interface, API key authentication, persistent jobs, and separate worker processes.
+An open-source implementation of the Similarity Ensemble Approach (SEA), which relates protein targets through the chemical similarity of their ligand sets. Built with Pixi, RDKit, and FastAPI, it provides an English web interface, API key authentication, persistent jobs, and separate worker processes.
 
 Original paper: Keiser et al., *Relating protein pharmacology by ligand chemistry*, Nature Biotechnology 25, 197–206 (2007), https://doi.org/10.1038/nbt1284
 
@@ -66,7 +66,7 @@ The equivalent Pixi tasks are `pixi run start` and `pixi run stop`; they also ac
 Target prediction and both sides of set comparison support three input methods:
 
 - Paste SMILES, one molecule per line.
-- Click **構造を描く** to open the bundled [Ketcher molecular editor](https://github.com/epam/ketcher). Draw a molecule and click **入力に追加** to append it to the selected input. Add separate compounds one at a time; disconnected fragments in one drawing represent one input structure. Closing the editor without adding leaves the input unchanged.
+- Click **Draw structure** to open the bundled [Ketcher molecular editor](https://github.com/epam/ketcher). Draw a molecule and click **Add to input** to append it to the selected input. Add separate compounds one at a time; disconnected fragments in one drawing represent one input structure. Closing the editor without adding leaves the input unchanged.
 - Select a structure file to replace the selected input after validation. Supported extensions are `.sdf`/`.sd` (multiple records), `.mol` (one molecule, V2000 or V3000), `.smi`/`.smiles`/`.txt` (SMILES with an optional whitespace-separated name), and `.csv` (a `smiles` column, with an optional `name` column). CSV supports quoted fields and embedded newlines. Files must contain UTF-8 text.
 
 Imported structures appear as isomeric SMILES in the input area for review before submitting a search or comparison. Record order and repeated molecules are retained during import. Stereochemistry, charges, and disconnected fragments are preserved in these SMILES; the existing SEA standardization and ensemble deduplication run when the job is submitted. SDF properties other than the molecule name are not used in the search.
@@ -76,6 +76,20 @@ Use concrete small-molecule structures. Query atoms/bonds, R groups, and reactio
 An invalid structure rejects the entire import and displays its one-based record number. Previously entered structures remain intact. CSV record numbers count data rows after the header; SMILES text uses line numbers; SDF uses molecule record numbers. Imports allow up to 1,000 records by default (`SEA_MAX_SET_MOLECULES`). Prediction and comparison limits still apply when submitting the resulting molecules. The browser allows files up to 10 MB, and the API request limit includes JSON encoding overhead, so files close to this size may need to be split.
 
 The editor and all its assets are hosted locally, with no CDN or external structure-conversion service. The Ketcher version, archive checksum, and Apache license are recorded in [the bundled editor notice](src/sea/web/vendor/ketcher/README.md). No additional Pixi dependencies or frontend build step are required.
+
+## Exploring search results
+
+The English interface uses a white background with dark-blue controls. **Target search** supports separate searches for each input molecule or a single ensemble search. Choose 20, 50, or 100 returned targets per query. **Load example** fills the input with an example appropriate to the selected library. ChEMBL libraries appear before synthetic demos, with newer release numbers first.
+
+Completed results show the reference library, fingerprint, query structure, and computation time. Use **Viewing query** to move between queries. The ranked list puts the target name, ID, protein-family badges, and species together, alongside the E-value and highest Tanimoto among saved contributing pairs. Select a target by clicking its name or focusing it and pressing Enter to inspect its statistics and molecular matches. Taxonomy IDs and full classification paths are available in the selected result and classification tooltips.
+
+Filter the returned results by target name, ID, family, or species. Display sorting can use SEA rank, highest saved Tanimoto, or target name; the original SEA rank remains visible. These controls operate on the current query's returned results. CSV and JSON downloads contain the complete stored analysis across all queries, independent of display filters.
+
+The detail panel shows query/reference structures side by side, four-decimal Tanimoto values, expandable SMILES with copy buttons, and up to three saved pairs initially. **Show all saved pairs** reveals the remaining saved evidence. Saved pairs may be a subset of all contributing pairs; both counts are displayed. When no pair reaches the calibrated threshold, the UI leaves the best-Tanimoto field empty instead of inferring a similarity from missing evidence.
+
+**Calculation details & provenance** contains the dataset manifest, preprocessing records, threshold, execution information, and job ID. Extremely small p-values and E-values are displayed using their stored natural logarithms when numeric values underflow to zero. Monte Carlo resolution and raw-score tie breaking are explained alongside the selected result. E-values and Tanimoto similarities are not binding probabilities.
+
+At narrow screen widths, the list and selected detail stack vertically, and target rows become compact cards. **Back to results** returns from a selected target to the list. **Job history** reopens previous analyses using the same result explorer. Interface copy, validation errors, and new synthetic-demo names are English; original datasets and stored analyses are preserved. Older built-in demo names are translated for display using their stable demo IDs.
 
 ## Building a ChEMBL reference database
 

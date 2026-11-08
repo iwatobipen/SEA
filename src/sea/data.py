@@ -30,7 +30,7 @@ def save_dataset(targets, provenance, sizes=(1, 10, 30, 100), repeats=128, seed=
     unique = sorted({s for t in targets for s in t["smiles"]})
     pool = [molecule(s) for s in unique]
     if len(pool) < 10:
-        raise ValueError("背景分子は10以上必要です")
+        raise ValueError("At least 10 background molecules are required.")
     model = calibrate(pool, sizes, repeats, seed, progress)
     model["empirical_trials"] = empirical_trials
     manifest = {"created_at": datetime.now(timezone.utc).isoformat(), "fingerprint": FP_SPEC,
@@ -65,10 +65,10 @@ def load_dataset(dataset_id):
 @lru_cache(maxsize=2)
 def _load_dataset(root, dataset_id):
     if len(dataset_id) != 20 or any(c not in "0123456789abcdef" for c in dataset_id):
-        raise ValueError("不正なdataset ID")
+        raise ValueError("Invalid dataset ID.")
     data = json.loads((Path(root)/"datasets"/f"{dataset_id}.json").read_text())
     if data["manifest"]["rdkit_version"] != rdBase.rdkitVersion:
-        raise ValueError("RDKit版が参照DBと異なります。DBを再構築してください")
+        raise ValueError("The RDKit version differs from the reference dataset. Rebuild the dataset.")
     if "fingerprints" in data:
         structures = {s: Molecule(s,DataStructs.CreateFromBinaryText(bytes.fromhex(fp))) for s,fp in data["fingerprints"].items()}
     else:
@@ -140,7 +140,7 @@ def build_chembl(source, release, settings, repeats=128, empirical_trials=999):
                 "evidence": {m: evidence[(tid,m)] for m in sorted(s)}}
                for tid,s in sorted(actives.items()) if len(s) >= settings.get("min_ligands", 10)]
     if not targets:
-        raise ValueError("条件を満たす標的がありません")
+        raise ValueError("No targets meet the configured filters.")
     provenance = {"source": "ChEMBL", "release": release, "source_sha256": digest_file(source),
                   "filters": settings, "counts": dict(counts), "sqlite_version": version,
                   "attribution": f"ChEMBL data is from https://www.ebi.ac.uk/chembl — version {release}",

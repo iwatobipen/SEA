@@ -8,9 +8,9 @@ from .jobs import create_key, run_workers
 def demo():
     # Synthetic chemical groups, deliberately not biological target annotations.
     targets = [
-        {"id":"DEMO-ALCOHOL","name":"デモ: アルコール集合（生物学的標的ではありません）","smiles":["CO","CCO","CCCO","CCCCO","CCCCCO","CCCCCCO","CC(O)C","CCC(O)C","CC(C)CO","OCCO"]},
-        {"id":"DEMO-ACID","name":"デモ: カルボン酸集合（生物学的標的ではありません）","smiles":["CC(=O)O","CCC(=O)O","CCCC(=O)O","CCCCC(=O)O","CCCCCC(=O)O","CC(C)C(=O)O","O=C(O)c1ccccc1","O=C(O)CCc1ccccc1","O=C(O)Cc1ccccc1","O=C(O)C=CC"]},
-        {"id":"DEMO-AROMATIC","name":"デモ: 芳香族集合（生物学的標的ではありません）","smiles":["c1ccccc1","Cc1ccccc1","CCc1ccccc1","Oc1ccccc1","Nc1ccccc1","COc1ccccc1","Clc1ccccc1","Fc1ccccc1","Brc1ccccc1","c1ccncc1"]}]
+        {"id":"DEMO-ALCOHOL","name":"Alcohol set (synthetic demo)","smiles":["CO","CCO","CCCO","CCCCO","CCCCCO","CCCCCCO","CC(O)C","CCC(O)C","CC(C)CO","OCCO"]},
+        {"id":"DEMO-ACID","name":"Carboxylic acid set (synthetic demo)","smiles":["CC(=O)O","CCC(=O)O","CCCC(=O)O","CCCCC(=O)O","CCCCCC(=O)O","CC(C)C(=O)O","O=C(O)c1ccccc1","O=C(O)CCc1ccccc1","O=C(O)Cc1ccccc1","O=C(O)C=CC"]},
+        {"id":"DEMO-AROMATIC","name":"Aromatic set (synthetic demo)","smiles":["c1ccccc1","Cc1ccccc1","CCc1ccccc1","Oc1ccccc1","Nc1ccccc1","COc1ccccc1","Clc1ccccc1","Fc1ccccc1","Brc1ccccc1","c1ccncc1"]}]
     from .chemistry import normalize
     for t in targets:
         t["smiles"] = [m.smiles for m in normalize(t["smiles"])[0]]
@@ -23,7 +23,7 @@ def download(release, checksum):
     import tarfile
     import httpx
     if not release.isdigit() or len(checksum)!=64 or any(c not in "0123456789abcdefABCDEF" for c in checksum):
-        raise ValueError("releaseは整数、sha256は64桁の16進数で指定してください")
+        raise ValueError("Specify release as an integer and sha256 as 64 hexadecimal characters.")
     folder = home()/"downloads"
     folder.mkdir(exist_ok=True)
     name = f"chembl_{release}_sqlite.tar.gz"

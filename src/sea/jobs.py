@@ -178,7 +178,7 @@ def run_workers(count=2):
         while not shutdown[0]:
             time.sleep(.2)
             if any(not p.is_alive() for p in workers):
-                raise RuntimeError("workerが停止しました。supervisorを再起動してください")
+                raise RuntimeError("A worker stopped unexpectedly. Restart the worker supervisor.")
     finally:
         stop.set()
         for worker in workers:

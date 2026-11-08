@@ -18,23 +18,23 @@ class Molecule:
 
 def molecule(smiles: str) -> Molecule:
     if not isinstance(smiles, str) or not smiles.strip() or len(smiles) > 10000:
-        raise InputError("空または長すぎるSMILESです")
+        raise InputError("SMILES must be nonempty and no longer than 10,000 characters.")
     mol = Chem.MolFromSmiles(smiles)
     if mol is None or mol.GetNumAtoms() == 0:
-        raise InputError("不正なSMILESです")
+        raise InputError("Invalid SMILES.")
     mol = rdMolStandardize.Cleanup(mol)
     mol = rdMolStandardize.FragmentParent(mol)
     mol = rdMolStandardize.Uncharger().uncharge(mol)
     Chem.SanitizeMol(mol)
     if not any(a.GetAtomicNum() == 6 for a in mol.GetAtoms()):
-        raise InputError("有機分子を入力してください")
+        raise InputError("Enter an organic molecule containing carbon.")
     canonical = Chem.MolToSmiles(mol, isomericSmiles=True)
     return Molecule(canonical, Chem.RDKFingerprint(mol, minPath=1, maxPath=7, fpSize=2048))
 
 
 def normalize(smiles: list[str]):
     if not smiles:
-        raise InputError("集合が空です")
+        raise InputError("The ligand set is empty.")
     unique, rows, errors = {}, [], []
     for i, value in enumerate(smiles, 1):
         try:

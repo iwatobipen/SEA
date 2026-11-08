@@ -87,7 +87,8 @@ def test_result_json_csv_and_target_search_enrich_old_jobs(annotated_dataset):
     headers={'X-API-Key':create_key('test')}
     page=client.get('/')
     assert page.headers['cache-control']=='no-cache'
-    assert 'ファミリー' in page.text and '生物種' in page.text
+    assert '<html lang="en">' in page.text
+    assert 'Target / family / species' in page.text
     assert client.get('/static/app.js?v=2').headers['cache-control']=='no-cache'
     response=client.post('/api/v1/predictions',headers=headers,json={'dataset_id':dataset,'queries':[['CO']],'top_k':4})
     jid=response.json()['job_id']

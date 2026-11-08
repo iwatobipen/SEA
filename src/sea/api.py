@@ -61,7 +61,7 @@ def owner(request: Request, token: str | None = Depends(api_key_header)):
             if request.headers.get("X-SEA-Request") != "1":
                 raise HTTPException(403,"Missing request header")
     if not user:
-        raise HTTPException(401,"APIキーまたはログインが必要です")
+        raise HTTPException(401,"An API key or an active session is required.")
     return user
 
 
@@ -73,7 +73,7 @@ class Login(BaseModel):
 def login(body: Login, response: Response):
     user = authenticate(body.api_key)
     if not user:
-        raise HTTPException(401,"APIキーが不正です")
+        raise HTTPException(401,"Invalid API key.")
     token = secrets.token_urlsafe(32)
     with connection() as con:
         con.execute("DELETE FROM sessions WHERE expires<?",(time.time(),))
@@ -202,7 +202,7 @@ def validate_sets(dataset_id, sets, maximum):
         except InputError as exc:
             raise HTTPException(422,detail={"code":"invalid_smiles","set_index":i,"rows":exc.args[0]})
         if len(mols)>len(structures):
-            raise HTTPException(422,"背景分子数を超える集合です")
+            raise HTTPException(422,"A ligand set exceeds the background molecule count.")
 
 
 @app.post("/api/v1/predictions",status_code=202,response_model=JobAccepted,operation_id="submit_prediction")
@@ -215,7 +215,7 @@ def prediction(body:Prediction,user=Depends(owner)):
 def comparison(body:Comparison,user=Depends(owner)):
     limit = int(os.getenv("SEA_MAX_SET_MOLECULES",1000))
     if max(len(body.left),len(body.right))>limit:
-        raise HTTPException(422,"集合サイズ上限を超えています")
+        raise HTTPException(422,"A ligand set exceeds the molecule limit.")
     validate_sets(body.dataset_id,[body.left,body.right],2*limit)
     return {"job_id":submit(user,"comparison",body.model_dump())}
 
@@ -224,7 +224,7 @@ def get_job(jid,user):
     with connection() as con:
         row = con.execute("SELECT * FROM jobs WHERE id=? AND owner=?",(jid,user)).fetchone()
     if not row:
-        raise HTTPException(404,"ジョブがありません")
+        raise HTTPException(404,"Job not found.")
     return dict(row)
 
 

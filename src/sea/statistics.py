@@ -94,7 +94,7 @@ def significance(score, left_size, right_size, pool, model, comparisons=1, check
         method = "gumbel"
     else:
         if max(left_size, right_size) > len(pool):
-            raise ValueError("比較集合が背景分子数を超えています。より大きい背景DBを構築してください")
+            raise ValueError("A ligand set exceeds the background molecule count. Build a larger reference dataset.")
         trials = model["empirical_trials"]
         rng = np.random.default_rng(np.random.SeedSequence([model["seed"], min(left_size,right_size), max(left_size,right_size)]))
         key = (min(left_size,right_size), max(left_size,right_size))
