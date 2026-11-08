@@ -107,9 +107,13 @@ ChEMBL run returned evidence in 0.733 seconds cold and 0.739 seconds during
 refinement; see the [latency report](phased-performance-results.json). Cold-load readiness and
 queue waiting must be reported separately.
 
-Preserve row selection and scroll position as statistics arrive. Mark updated
-rankings and let users apply them without unexpectedly moving the selected
-target. Label examples include `Screening`, `Refining`, `Complete`,
+The first completed screening artifact automatically replaces an evidence
+preview with pending P/E values. This establishes the initial statistical
+ranking; preserve the query, filters, scroll position and selected target when
+it is still returned. Once numerical statistics are shown, mark later updates
+and let users apply them explicitly. Temporary polling failures retry with
+backoff and a request timeout. See the [display bug investigation and regression
+checks](ui-statistics-updates.md). Label examples include `Screening`, `Refining`, `Complete`,
 `Resolution-limited`, and `Uncertain`. Completion means the declared numerical
 procedure finished, not that a target has been experimentally confirmed.
 

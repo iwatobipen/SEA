@@ -134,3 +134,12 @@ The source dataset remains unchanged. New dataset `9d52be7ff211a45d2709` and mod
 The idle lab services were restarted with the approved reference. All **30 existing completed result hashes**, all **6 API-key records**, and identities/sizes/timestamps of all **5 original dataset/manifest/annotation files** were preserved. Live health, preview/dataset authentication, OpenAPI and UI version 7 were checked. Application validation and study scripts created no lab jobs or keys.
 
 The final isolated Chrome smoke run passed in 29.81 s, including approved-reference preference, retaining an explicit legacy choice, the long parameter label at mobile width, 199,999-trial Balanced completion, pause/resume, immutable screening artifacts, file import/drawing and 999,999-trial Research completion. Manifest fixtures are used only for display selection and never submitted as scientific jobs.
+
+
+## Pending-statistics display and polling recovery
+
+Recorded on November 8, 2026. The original UI was reproduced leaving an evidence preview with Pending P/E after a completed screening response; the new deterministic browser check timed out before the fix. First committed numerical statistics now appear automatically, preserving the selected query/target when still returned, filters, display sort and scroll position. Later numerical refinement remains explicit. Read-only job update requests have a 15-second timeout and capped retry backoff for transient failures; authentication errors stop and a newer watch invalidates earlier retries.
+
+**104 Python regression tests passed in 8.79 s.** The isolated Chrome/API/worker smoke run passed in **37.58 s**, including seven new regression groups: automatic first statistics, selection/filter preservation, explicit later refinement, interrupted status/result/preview reads, obsolete retry isolation, terminal authentication, and request-timeout recovery. Existing drawing/import, exports, mobile, history, Balanced 199,999-trial and Research 999,999-trial checks also passed. Fixtures were never saved as scientific jobs. The [investigation and behavior contract](ui-statistics-updates.md) distinguishes normal initial Pending from stale display bugs.
+
+Live health, preview authentication and exact frontend asset version 8 were checked. No service restart, dataset rebuild or scoring change was needed; browser tests used separate temporary services and records.

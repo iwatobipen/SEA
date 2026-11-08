@@ -1,5 +1,6 @@
 // Optional development smoke check: Node >=22 and Chrome. Services started by smoke.py.
 import fs from 'node:fs';
+import {checkUpdates} from './browser-updates-smoke.mjs';
 const base='http://127.0.0.1:19021';
 const targets=await(await fetch('http://127.0.0.1:19022/json')).json();
 const target=targets.find(t=>t.type==='page');
@@ -227,6 +228,7 @@ await delay(300);
 await evaluate(`editor().setMolecule(${JSON.stringify(process.env.SEA_SMOKE_MOL)})`);
 await delay(300);const mobileEditor=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('var/smoke-editor-mobile.png',Buffer.from(mobileEditor.data,'base64'));
 if(!await evaluate("document.getElementById('structure-dialog').scrollWidth<=document.getElementById('structure-dialog').clientWidth"))throw Error('Editor dialog overflows on mobile');
+console.log(JSON.stringify({update_regressions:await checkUpdates({evaluate,waitFor,delay})}));
 if(externalRequests.length)throw Error('Unexpected external resources: '+externalRequests.join(', '));
 if(runtimeErrors.length)throw Error('Browser exceptions: '+JSON.stringify(runtimeErrors));
 console.log(JSON.stringify({browser_prediction_rows:rows,queries:2,real_jobs:6,evidence_seconds:evidenceSeconds,final_seconds_including_pause:finalSeconds,monte_carlo_final_budget:199999,checks:['fixed-budget final artifacts','pause and resume','stable displayed selection','explicit update application','English UI and errors','typed input previews','preview pagination/errors/clearing','file input previews','query switching','family and text filters','retained SEA ranks','keyboard selection','pair expansion','underflow','zero/empty results','exports','comparison','ensemble','history','mobile overflow'],structure_formats:['sdf','mol','smiles','csv'],editor:'local Ketcher 3.18.0',desktop:'var/smoke-desktop.png',mobile:'var/smoke-mobile.png'}));ws.close();

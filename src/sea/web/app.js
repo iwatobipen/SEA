@@ -199,17 +199,25 @@ function incomingResult(data, id, ready) {
   lastSnapshot = signature;
   if (!currentResult) {
     currentJob = id; artifactReady = ready; render(data); setBusy(false);
+  } else if (ready && (currentResult.analysis?.phase === 'evidence' || currentResult.results.some(row => row.p_value == null || row.e_value == null)) &&
+             data.results.every(row => row.p_value != null && row.e_value != null)) {
+    // The first complete statistics must replace Pending without a manual click.
+    // Later numerical refinements remain opt-in so the ranked list stays stable.
+    applyResult({data, id, ready});
   } else {
     pendingResult = {data, id, ready}; $('apply-statistics').hidden = false;
     $('apply-statistics').textContent = data.analysis?.complete ? 'Apply final results' : data.analysis?.phase === 'screening' && ready ? 'Apply screening results' : 'Apply latest statistics';
+    if (data.analysis?.complete) $('analysis-note').textContent = 'Final results are ready. Choose Apply final results to update the displayed statistics and ranking.';
   }
 }
-$('apply-statistics').onclick = () => {
-  if (!pendingResult) return;
-  const update = pendingResult, query = $('query-select').value;
+function applyResult(update) {
+  const query = $('query-select').value, expanded = showAllPairs;
   const selected = resultRows[selectedIndex]?.result;
   const filters = [$('result-search').value, $('family-filter').value, $('result-sort').value];
   const position = {top: window.scrollY, left: window.scrollX, behavior: 'instant'};
+  const focused = document.activeElement;
+  const caret = focused === $('result-search') ? [focused.selectionStart, focused.selectionEnd] : null;
+  const targetFocused = focused?.classList.contains('target-button');
   pendingResult = null; currentJob = update.id; artifactReady = update.ready;
   render(update.data);
   if ([...$('query-select').options].some(option => option.value === query)) {
@@ -218,7 +226,14 @@ $('apply-statistics').onclick = () => {
   $('result-search').value = filters[0]; $('result-sort').value = filters[2];
   if ([...$('family-filter').options].some(option => option.value === filters[1])) $('family-filter').value = filters[1];
   selectedIndex = resultRows.find(item => queryKey(item.result) === query && item.result.target?.id === selected?.target?.id)?.index ?? null;
-  updateResults(); window.scrollTo(position);
+  updateResults();
+  if (expanded && selectedIndex !== null) { showAllPairs = true; evidence(resultRows[selectedIndex].result); }
+  if (targetFocused) $('result-rows').querySelector('[data-selected="true"] .target-button')?.focus({preventScroll: true});
+  if (caret) focused.setSelectionRange(...caret);
+  window.scrollTo(position);
+}
+$('apply-statistics').onclick = () => {
+  if (pendingResult) applyResult(pendingResult);
 };
 $('resume-refinement').onclick = async () => {
   if (!refinementJob) return;
@@ -234,16 +249,27 @@ async function watch(id, preserve = false) {
   $('progress-panel').hidden = false;
   $('status').textContent = 'Loading analysis…'; $('job-id').textContent = `Job ${id}`;
   $('progress').value = 0; $('cancel').hidden = false; $('cancel').textContent = 'Cancel job';
-  let activeId = id;
+  let activeId = id, failures = 0, retryMessage = '';
+  function recovered() {
+    failures = 0;
+    if (retryMessage && $('message').textContent === retryMessage) message();
+    retryMessage = '';
+  }
+  async function readUpdate(path) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+    try { return await api(path, {signal: controller.signal, cache: 'no-store'}); }
+    finally { clearTimeout(timeout); }
+  }
   async function tick() {
     if (generation !== watchGeneration) return;
     try {
-      const job = await api(`/jobs/${activeId}`);
+      const job = await readUpdate(`/jobs/${activeId}`);
       if (generation !== watchGeneration) return;
       const refining = job.kind === 'refinement';
       if (refining) { refinementJob = activeId; $('cancel').textContent = 'Pause refinement'; }
       if (refining && job.status !== 'completed' && !currentResult && job.parent_id) {
-        const source = await api(`/jobs/${job.parent_id}/result`);
+        const source = await readUpdate(`/jobs/${job.parent_id}/result`);
         if (generation !== watchGeneration) return;
         incomingResult(source, job.parent_id, true); setBusy(false);
       }
@@ -252,9 +278,9 @@ async function watch(id, preserve = false) {
       $('job-id').textContent = `Job ${activeId}`; $('progress').value = job.progress;
       $('cancel').hidden = !['queued', 'running'].includes(job.status);
       if (job.status === 'completed') {
-        const data = await api(`/jobs/${activeId}/result`);
+        const data = await readUpdate(`/jobs/${activeId}/result`);
         if (generation !== watchGeneration) return;
-        incomingResult(data, activeId, true); setBusy(false);
+        incomingResult(data, activeId, true); setBusy(false); recovered();
         if (data.analysis && !data.analysis.complete && job.refinement_job_id) {
           activeId = job.refinement_job_id; refinementJob = activeId;
           pollTimer = setTimeout(tick, 100); return;
@@ -263,18 +289,31 @@ async function watch(id, preserve = false) {
       }
       if (job.profile !== 'legacy' || refining) {
         try {
-          const data = await api(`/jobs/${activeId}/preview`);
+          const data = await readUpdate(`/jobs/${activeId}/preview`);
           if (generation !== watchGeneration) return;
           incomingResult(data, activeId, false); setBusy(false);
         } catch (error) { if (error.status !== 409) throw error; }
       }
+      recovered();
       if (['failed', 'cancelled'].includes(job.status)) {
         setBusy(false); $('resume-refinement').hidden = !refining;
         $('status').textContent = refining ? 'Refinement incomplete · screening results remain available' : 'Analysis incomplete';
         message(job.error || (refining ? 'Refinement is paused. Resume it to complete the declared statistical budget.' : 'The job was cancelled.')); return;
       }
       pollTimer = setTimeout(tick, 500);
-    } catch (error) { if (generation === watchGeneration) { setBusy(false); $('cancel').hidden = true; message(error.message); } }
+    } catch (error) {
+      if (generation !== watchGeneration) return;
+      setBusy(false); $('cancel').hidden = true;
+      if (error.status == null || [408, 409, 429].includes(error.status) || error.status >= 500) {
+        const delay = Math.min(1000 * 2 ** Math.min(failures++, 4), 10000);
+        $('status').textContent = `Connection interrupted · retrying updates in ${delay / 1000} s`;
+        retryMessage = 'Unable to fetch analysis updates. Retrying automatically; server calculations continue.';
+        message(retryMessage);
+        pollTimer = setTimeout(tick, delay);
+      } else {
+        $('status').textContent = 'Unable to load analysis updates'; message(error.message);
+      }
+    }
   }
   await tick();
 }
@@ -336,7 +375,7 @@ function render(data) {
   if (analysis) {
     const labels = {evidence: 'Chemical evidence · statistics pending', screening: 'Screening · preliminary statistics', refining: 'Refinement · partial statistics', final: 'Final · fixed budget complete'};
     $('analysis-stage').textContent = labels[analysis.phase] || analysis.phase;
-    $('analysis-note').textContent = `${analysis.profile.name} profile · ${integer(analysis.profile.planned_trials)} planned trials per Monte Carlo comparison. ${analysis.complete ? 'Final refers to computational completion; limited resolution or uncertainty may remain.' : 'You can continue searching. Updates are applied only when you choose; displayed rows stay in place.'}`;
+    $('analysis-note').textContent = `${analysis.profile.name} profile · ${integer(analysis.profile.planned_trials)} planned trials per Monte Carlo comparison. ${analysis.complete ? 'Final refers to computational completion; limited resolution or uncertainty may remain.' : 'Initial screening statistics appear automatically. Later refinements are applied when you choose; you can continue searching.'}`;
   }
   for (const [id, suffix, extension] of [['json-export', '', 'json'], ['csv-export', '?format=csv', 'csv']]) {
     $(id).hidden = !artifactReady;
