@@ -29,3 +29,9 @@ demo = "python -m sea demo"
 test = "pytest -q"
 start = "python scripts/services.py start"
 stop = "python scripts/services.py stop"
+
+[feature.paper-validation.dependencies]
+xlrd = "2.0.*"
+
+[environments]
+paper-validation = ["paper-validation"]

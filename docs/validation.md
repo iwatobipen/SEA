@@ -24,7 +24,7 @@ Example measurements for the synthetic demo (30 molecules, three sets, two separ
 
 ## Checks not yet performed
 
-The full ChEMBL download and reference-database build have not been run. Biological prediction accuracy on real data has not been evaluated with the scaffold holdout. The build, calibration, and evaluation CLI commands are implemented; run `sea build` and `sea evaluate` on real data before making scientific performance claims. The synthetic demo's target names describe chemical groups, not actual proteins.
+At the initial validation, the full ChEMBL download and reference-database build had not been run; the later ChEMBL 37 build is recorded below. Biological prediction accuracy on real data has not been evaluated with the scaffold holdout. The build, calibration, and evaluation CLI commands are implemented; run `sea build` and `sea evaluate` on real data before making scientific performance claims. The synthetic demo's target names describe chemical groups, not actual proteins.
 
 In the development sandbox, TestClient's internal event-loop communication stalled. API and browser checks were therefore run in an execution environment that allowed local communication.
 
@@ -57,3 +57,9 @@ A Python wheel build was checked to contain the structure-import module and all 
 The regression suite passed 31 tests in 5.54 seconds after adding the start/stop controller. Service checks use real API and worker processes with an isolated data directory and port. They cover readiness, repeated startup without duplicate processes, repeated shutdown, termination of worker children, an occupied port, stale PID metadata pointing to an unrelated live process, and cleanup after API startup failure. Legacy integer PID files are also checked before upgrading their metadata.
 
 Both executable shell wrappers were exercised through the locked Pixi environment from outside the repository, using a data-directory path containing spaces and a custom port with one worker. Start, repeated start, stop, and repeated stop succeeded. Shell syntax checks and the Pixi `start`/`stop` task help commands also passed.
+
+## Original-paper comparison
+
+The [comparison report](paper-comparison.md) and [machine-readable results](paper-comparison-results.json) record an executed fingerprint diagnosis and statistical replay of all 60,516 official supplementary rows. It distinguishes independent aggregation/tail checks, replay from supplied raw scores, and end-to-end biological validation. The latter remains unproven. The current ChEMBL dataset and service model were not modified.
+
+The full regression suite passed 34 tests in 5.26 seconds. The added offline checks cover the reported path/Morgan score difference, independent bit-set aggregation, high-precision tail evaluation, and replay ranking with self-matches excluded. The documented optional Pixi environment was installed from the lock file; both cached-input and fresh official-download comparison runs completed and produced identical JSON results.

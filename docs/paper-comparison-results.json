@@ -1,0 +1,371 @@
+{
+  "schema": 1,
+  "environment": {
+    "python": "3.12.16",
+    "rdkit": "2026.09.2",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1"
+  },
+  "source": {
+    "paper": "https://doi.org/10.1038/nbt1284",
+    "url": "https://static-content.springer.com/esm/art%3A10.1038%2Fnbt1284/MediaObjects/41587_2007_BFnbt1284_MOESM65_ESM.zip",
+    "sha256": "1fa3c74bb4a5340d002ee712da815331152d58164d78e4e341111036d4e3ce1e",
+    "workbook": "Shoichet Supplementary Data.xls"
+  },
+  "fingerprint_diagnosis": {
+    "query": "COc1ccc2[nH]cc(c2c1)C(CC)CN",
+    "reference": "COc1ccc2[nH]cc(CCN)c2c1",
+    "standardization": "cleanup-fragment-parent-uncharge-canonical-isomeric-v1",
+    "canonical_structures": [
+      "CCC(CN)c1c[nH]c2ccc(OC)cc12",
+      "COc1ccc2[nH]cc(CCN)c2c1"
+    ],
+    "standardization_changed_structure": [
+      false,
+      false
+    ],
+    "fingerprints": [
+      {
+        "spec": {
+          "kind": "RDKit-path",
+          "bits": 2048,
+          "min_path": 1,
+          "max_path": 7
+        },
+        "query_bits": 616,
+        "reference_bits": 506,
+        "intersection_bits": 506,
+        "union_bits": 616,
+        "tanimoto": 0.8214285714285714,
+        "independent_tanimoto": 0.8214285714285714
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 1,
+          "bits": 1024,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 23,
+        "reference_bits": 20,
+        "intersection_bits": 17,
+        "union_bits": 26,
+        "tanimoto": 0.6538461538461539,
+        "independent_tanimoto": 0.6538461538461539
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 1,
+          "bits": 2048,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 23,
+        "reference_bits": 20,
+        "intersection_bits": 17,
+        "union_bits": 26,
+        "tanimoto": 0.6538461538461539,
+        "independent_tanimoto": 0.6538461538461539
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 1,
+          "bits": 4096,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 23,
+        "reference_bits": 20,
+        "intersection_bits": 17,
+        "union_bits": 26,
+        "tanimoto": 0.6538461538461539,
+        "independent_tanimoto": 0.6538461538461539
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 2,
+          "bits": 1024,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 36,
+        "reference_bits": 32,
+        "intersection_bits": 24,
+        "union_bits": 44,
+        "tanimoto": 0.5454545454545454,
+        "independent_tanimoto": 0.5454545454545454
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 2,
+          "bits": 2048,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 36,
+        "reference_bits": 32,
+        "intersection_bits": 24,
+        "union_bits": 44,
+        "tanimoto": 0.5454545454545454,
+        "independent_tanimoto": 0.5454545454545454
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 2,
+          "bits": 4096,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 36,
+        "reference_bits": 32,
+        "intersection_bits": 24,
+        "union_bits": 44,
+        "tanimoto": 0.5454545454545454,
+        "independent_tanimoto": 0.5454545454545454
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 3,
+          "bits": 1024,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 46,
+        "reference_bits": 42,
+        "intersection_bits": 27,
+        "union_bits": 61,
+        "tanimoto": 0.4426229508196721,
+        "independent_tanimoto": 0.4426229508196721
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 3,
+          "bits": 2048,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 46,
+        "reference_bits": 42,
+        "intersection_bits": 27,
+        "union_bits": 61,
+        "tanimoto": 0.4426229508196721,
+        "independent_tanimoto": 0.4426229508196721
+      },
+      {
+        "spec": {
+          "kind": "Morgan",
+          "radius": 3,
+          "bits": 4096,
+          "chirality": false,
+          "count_simulation": false
+        },
+        "query_bits": 46,
+        "reference_bits": 42,
+        "intersection_bits": 27,
+        "union_bits": 61,
+        "tanimoto": 0.4426229508196721,
+        "independent_tanimoto": 0.4426229508196721
+      }
+    ]
+  },
+  "independent_raw_score_checks": [
+    {
+      "kind": "RDKit-path",
+      "threshold": 0.3,
+      "production_score": 5.021428571428571,
+      "independent_score": 5.021428571428571,
+      "absolute_error": 0.0,
+      "contributing_pairs": 6,
+      "count_matches": true
+    },
+    {
+      "kind": "RDKit-path",
+      "threshold": 0.57,
+      "production_score": 5.021428571428571,
+      "independent_score": 5.021428571428571,
+      "absolute_error": 0.0,
+      "contributing_pairs": 6,
+      "count_matches": true
+    },
+    {
+      "kind": "RDKit-path",
+      "threshold": 0.8,
+      "production_score": 3.821428571428571,
+      "independent_score": 3.821428571428571,
+      "absolute_error": 0.0,
+      "contributing_pairs": 4,
+      "count_matches": true
+    },
+    {
+      "kind": "RDKit-path",
+      "threshold": 1.0,
+      "production_score": 3.0,
+      "independent_score": 3.0,
+      "absolute_error": 0.0,
+      "contributing_pairs": 3,
+      "count_matches": true
+    },
+    {
+      "kind": "Morgan-radius-2",
+      "threshold": 0.3,
+      "production_score": 4.656565656565657,
+      "independent_score": 4.656565656565657,
+      "absolute_error": 0.0,
+      "contributing_pairs": 6,
+      "count_matches": true
+    },
+    {
+      "kind": "Morgan-radius-2",
+      "threshold": 0.57,
+      "production_score": 3.0,
+      "independent_score": 3.0,
+      "absolute_error": 0.0,
+      "contributing_pairs": 3,
+      "count_matches": true
+    },
+    {
+      "kind": "Morgan-radius-2",
+      "threshold": 0.8,
+      "production_score": 3.0,
+      "independent_score": 3.0,
+      "absolute_error": 0.0,
+      "contributing_pairs": 3,
+      "count_matches": true
+    },
+    {
+      "kind": "Morgan-radius-2",
+      "threshold": 1.0,
+      "production_score": 3.0,
+      "independent_score": 3.0,
+      "absolute_error": 0.0,
+      "contributing_pairs": 3,
+      "count_matches": true
+    }
+  ],
+  "independent_decimal_tail_checks": [
+    {
+      "z": 0,
+      "production_log_p": -0.8448448753249486,
+      "decimal_log_p": "-0.8448448753249485151099446910770732690291001521969061148934628166798638165667079363519989344588933381",
+      "absolute_log_error": 0.0
+    },
+    {
+      "z": 20,
+      "production_log_p": -26.228212268140847,
+      "decimal_log_p": "-26.22821226814084807469638962970131542664054401337163055653580106298732316767157842180511183285709504",
+      "absolute_log_error": 0.0
+    },
+    {
+      "z": 28,
+      "production_log_p": -36.488610909433724,
+      "decimal_log_p": "-36.48861090943372760698833907453832841566754047312087409636767958890940657938230407493903642980091387",
+      "absolute_log_error": 0.0
+    },
+    {
+      "z": 119,
+      "production_log_p": -153.20064545416335,
+      "decimal_log_p": "-153.2006454541633602303468388909321653956461787760669100478711304388964738668218738675318980439331799",
+      "absolute_log_error": 0.0
+    },
+    {
+      "z": 578,
+      "production_log_p": -741.8910174984591,
+      "decimal_log_p": "-741.8910174984589800850595279799241082591188251879852863514089599400833877172554575109944322933416923",
+      "absolute_log_error": 1.1368683772161603e-13
+    },
+    {
+      "z": 1000,
+      "production_log_p": -1283.1270458267657,
+      "decimal_log_p": "-1283.127045826765628404642871761088813898302826900032246700195373991283691239714777700682408812009848",
+      "absolute_log_error": 0.0
+    }
+  ],
+  "paper_statistical_replay": {
+    "classes": 246,
+    "comparisons": 60516,
+    "published_z_to_e_relative_error": {
+      "count": 60413,
+      "median": 1.9959439618168637e-06,
+      "p95": 4.2437185394621625e-05,
+      "p99": 0.0013758400649115145,
+      "max": 0.4683565187043407
+    },
+    "published_z_to_e_by_z_region": {
+      "z_at_least_30": {
+        "count": 1461,
+        "median": 0.0005147870643926178,
+        "p95": 0.005181327300576714,
+        "p99": 0.006440351217643675,
+        "max": 0.03448304439580212
+      },
+      "z_below_20": {
+        "count": 58560,
+        "median": 1.746632286441561e-06,
+        "p95": 1.705301360926309e-05,
+        "p99": 0.00011904394404402563,
+        "max": 0.0006697424252255258
+      },
+      "z_20_to_30": {
+        "count": 392,
+        "median": 0.0006433199197508907,
+        "p95": 0.20453919673877408,
+        "p99": 0.4093437367064988,
+        "max": 0.4683565187043407
+      }
+    },
+    "nonzero_e_within_1_percent": 60308,
+    "published_zero_e_count": 103,
+    "published_zero_e_stable_log_e_range": [
+      -14605.504417117641,
+      -736.7672581470373
+    ],
+    "rounded_raw_to_z_absolute_error": {
+      "count": 60516,
+      "median": 0.008130931649179773,
+      "p95": 0.0445541691881739,
+      "p99": 0.38958056578542705,
+      "max": 57.08166661649739
+    },
+    "production_gumbel_vs_original_tail_log_e_error": {
+      "count": 17181,
+      "median": 0.0,
+      "p95": 3.552713678800501e-15,
+      "p99": 5.684341886080802e-14,
+      "max": 9.094947017729282e-13
+    },
+    "ranking_replay": {
+      "query_classes": 246,
+      "self_matches_excluded": true,
+      "key": "descending Z, reference class ID for ties; published raw scores supplied",
+      "top_1_agreement": 1.0,
+      "mean_top_5_set_overlap": 1.0,
+      "mean_top_10_set_overlap": 1.0,
+      "mean_spearman": 0.999997934214767
+    },
+    "dhfr_ts_example": [
+      {
+        "query": 78389,
+        "reference": 78362,
+        "e": 1.1057e-61,
+        "z": 117.57,
+        "raw": 772.25,
+        "identities": 30.0,
+        "max_tc": 1.0,
+        "replayed_z": 117.97623538114273,
+        "query_name": "Dihydrofolate Reductase Inhibitor",
+        "reference_name": "Thymidylate Synthetase Inhibitor",
+        "e_from_published_z": 1.1071116950081927e-61,
+        "e_from_rounded_coefficients": 6.575315234816303e-62
+      }
+    ],
+    "interpretation": "Statistical replay from published scores; not end-to-end biological replication."
+  }
+}

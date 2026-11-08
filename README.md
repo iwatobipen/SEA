@@ -203,6 +203,13 @@ pixi run test
 
 See [docs/method.md](docs/method.md) for calculation details and [docs/validation.md](docs/validation.md) for the recorded checks. RDKit and ChEMBL replace the original Daylight fingerprints and MDDR dataset, so numerical agreement with the original paper is not claimed. E-values are not binding probabilities. With the default 999 Monte Carlo trials, the smallest possible p-value is 0.001; this resolution may be insufficient when searching many targets.
 
+An executed [comparison with the original paper](docs/paper-comparison.md) diagnoses fingerprint-dependent Tanimoto differences and replays all 60,516 published comparisons from their raw scores. It verifies statistical ordering, with explicit numerical discrepancies and limits; it does not establish equivalent biological prediction accuracy. Reproduce it in the optional Pixi environment:
+
+```bash
+pixi install --locked -e paper-validation
+pixi run --locked -e paper-validation python scripts/compare_paper.py --download --output var/paper-comparison.json
+```
+
 Zero-score comparisons return the exact p-value 1 without Monte Carlo sampling (`method=exact_zero`). Workers reuse deterministic background samples across jobs for the same dataset and set sizes. The web interface displays queue state and progress and prevents repeated submissions while a job is active.
 
 Change the Monte Carlo trial count with `sea build --trials 99999` or `sea calibrate DATASET_ID --trials 99999`. More trials improve p-value resolution and increase computation time. The result's `execution` field records job duration and worker peak RSS in KiB.

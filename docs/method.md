@@ -10,7 +10,9 @@
 
 These are implementation choices within the original paper's statistical framework; they do not guarantee the same background distribution. In particular, single-molecule queries use finite-sample Monte Carlo evaluation instead of assuming a continuous extreme-value distribution. Threshold-selection and Gumbel-fit diagnostics are stored in the dataset's model.
 
-The original paper's coefficients are used only in dedicated tests. The numerical example in the original Supplementary Methods contains rounding differences, so exact agreement with the E-value reported in the paper is not expected.
+The original paper's coefficients are used only in dedicated tests and the comparison script. The numerical example in the original Supplementary Methods contains rounding differences, so exact agreement with the E-value reported in the paper is not expected.
+
+See the executed [fingerprint diagnosis and original-data statistical replay](paper-comparison.md) for measurements on a reported molecule pair and all 60,516 published MDDR comparisons. The comparison script also uses the original coefficients, independently of the service's calibration. RDKit path and Morgan radius-2 fingerprints give 0.82142857 and 0.54545455, respectively, for the reported pair; Tanimoto values require a specified molecular representation.
 
 - Original paper: https://doi.org/10.1038/nbt1284
 - Supplementary Methods: https://static-content.springer.com/esm/art%3A10.1038%2Fnbt1284/MediaObjects/41587_2007_BFnbt1284_MOESM64_ESM.pdf
