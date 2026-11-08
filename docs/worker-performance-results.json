@@ -1,0 +1,49 @@
+{
+  "dataset_id": "e898df53d9bb5240f087",
+  "model_id": "cdeb3d04e1375ad3c7dd",
+  "rdkit_version": "2026.09.2",
+  "numpy_version": "2.5.4",
+  "query": [
+    {
+      "row": 1,
+      "input": "COc1ccc2[nH]cc(c2c1)C(CC)CN",
+      "smiles": "CCC(CN)c1c[nH]c2ccc(OC)cc12",
+      "duplicate": false
+    }
+  ],
+  "target_count": 1517,
+  "molecule_count": 441860,
+  "threshold": 0.56,
+  "empirical_trials": 999,
+  "background_distributions": 47,
+  "dataset_load_seconds": 7.375138527990202,
+  "scalar_cold_seconds": 41.927818134005065,
+  "methods": {
+    "exact_zero": 1470,
+    "monte_carlo": 47
+  },
+  "measurements": [
+    {
+      "cache": "cold",
+      "seconds": 11.094459220999852,
+      "speedup_over_scalar_cold": 3.7791673572194586,
+      "exact_results": true,
+      "exact_background_samples": true
+    },
+    {
+      "cache": "memory",
+      "seconds": 0.12590655700478237,
+      "speedup_over_scalar_cold": 333.0074233736095,
+      "exact_results": true,
+      "exact_background_samples": true
+    },
+    {
+      "cache": "disk",
+      "seconds": 0.13167690200498328,
+      "speedup_over_scalar_cold": 318.414372570964,
+      "exact_results": true,
+      "exact_background_samples": true
+    }
+  ],
+  "scope": "Scoring and significance only; excludes queueing, API validation, loading and job database writes."
+}

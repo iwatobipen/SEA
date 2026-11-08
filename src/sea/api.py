@@ -290,13 +290,20 @@ def targets(dataset_id:str,q:str="",offset:int=0,limit:int=50,user=Depends(owner
 
 
 @app.get("/api/v1/structure",operation_id="render_structure")
-def structure(smiles:str,user=Depends(owner)):
+def structure(smiles:str,standardize:bool=True,user=Depends(owner)):
     try:
-        canonical = molecule(smiles).smiles
+        if standardize:
+            mol = Chem.MolFromSmiles(molecule(smiles).smiles)
+        else:
+            if not smiles.strip() or len(smiles) > 10000:
+                raise ValueError("Invalid SMILES")
+            mol = Chem.MolFromSmiles(smiles)
+            if mol is None or mol.GetNumAtoms() == 0:
+                raise ValueError("Invalid SMILES")
     except Exception:
         raise HTTPException(422,"Invalid SMILES")
     drawer = rdMolDraw2D.MolDraw2DSVG(300,180)
-    drawer.DrawMolecule(Chem.MolFromSmiles(canonical))
+    drawer.DrawMolecule(mol)
     drawer.FinishDrawing()
     return Response(drawer.GetDrawingText(),media_type="image/svg+xml")
 

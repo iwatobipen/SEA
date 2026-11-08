@@ -51,8 +51,61 @@ function refreshInputControls() {
   $('dataset').disabled = busy;
 }
 function setBusy(value) { busy = value; refreshInputControls(); }
+const inputPreviews = new Map();
+const previewPageSize = 4;
+for (const id of ['query', 'left', 'right']) {
+  const panel = el('section', 'input-preview'); panel.id = `${id}-input-preview`; panel.hidden = true;
+  panel.setAttribute('aria-label', `${id === 'query' ? 'Query' : id === 'left' ? 'Set A' : 'Set B'} input structures`);
+  $(id + '-import-status').after(panel);
+  inputPreviews.set(id, {panel, text: null, timer: null, page: 0});
+}
+function scheduleInputPreview(id) {
+  const state = inputPreviews.get(id), text = $(id).value;
+  if (text === state.text) return;
+  state.text = text; state.page = 0; clearTimeout(state.timer);
+  state.panel.replaceChildren(); state.panel.hidden = !lines(id).length;
+  if (!state.panel.hidden) {
+    state.panel.append(el('p', 'preview-note', 'Updating structure preview…'));
+    state.timer = setTimeout(() => renderInputPreview(id), 350);
+  }
+}
+function renderInputPreview(id) {
+  const state = inputPreviews.get(id), structures = lines(id), start = state.page * previewPageSize;
+  state.panel.replaceChildren(); state.panel.hidden = !structures.length;
+  if (!structures.length) return;
+  const header = el('div', 'preview-heading');
+  header.append(el('strong', '', 'Input structures'), el('span', '', `${start + 1}–${Math.min(start + previewPageSize, structures.length)} of ${integer(structures.length)}`));
+  const grid = el('div', 'preview-grid');
+  for (const [offset, smiles] of structures.slice(start, start + previewPageSize).entries()) {
+    const card = el('figure', 'input-molecule'), label = el('figcaption', '', `Molecule ${start + offset + 1}`);
+    const image = el('img'); image.width = 240; image.height = 144; image.alt = `Input molecule ${start + offset + 1}: ${smiles}`;
+    const status = el('span', 'preview-molecule-status', 'Rendering…'); status.setAttribute('role', 'status');
+    image.onload = () => { status.hidden = true; card.dataset.state = 'ready'; };
+    image.onerror = () => { image.hidden = true; status.textContent = 'Unable to render. Check the SMILES.'; card.dataset.state = 'error'; };
+    const code = el('code', '', smiles); code.title = smiles;
+    card.append(label, image, status, code); grid.append(card);
+    image.src = '/api/v1/structure?standardize=false&smiles=' + encodeURIComponent(smiles);
+  }
+  const footer = el('div', 'preview-footer');
+  footer.append(el('span', 'preview-note', 'Before search standardization. Salts and charges are shown as entered.'));
+  if (structures.length > previewPageSize) {
+    const nav = el('div', 'preview-navigation');
+    for (const [label, delta] of [['Previous', -1], ['Next', 1]]) {
+      const button = el('button', 'quiet', label); button.type = 'button';
+      button.disabled = delta < 0 ? state.page === 0 : start + previewPageSize >= structures.length;
+      button.setAttribute('aria-label', `${label} input structures`);
+      button.onclick = () => { state.page += delta; renderInputPreview(id); };
+      nav.append(button);
+    }
+    footer.append(nav);
+  }
+  state.panel.append(header, grid, footer);
+}
 function updateInputCounts() {
-  for (const id of ['query', 'left', 'right']) $(id + '-count').textContent = plural(lines(id).length, 'molecule');
+  for (const id of ['query', 'left', 'right']) {
+    $(id + '-count').textContent = plural(lines(id).length, 'molecule');
+    scheduleInputPreview(id);
+  }
 }
 for (const id of ['query', 'left', 'right']) $(id).addEventListener('input', updateInputCounts);
 function libraryName(dataset) {

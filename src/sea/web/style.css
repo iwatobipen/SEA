@@ -91,6 +91,22 @@ textarea { font: 13px/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; res
 .import-status { font-size: 12px; color: var(--accent); white-space: pre-wrap; overflow-wrap: anywhere; }
 .import-status:empty { display: none; }
 .import-status.error, #editor-status.error { color: #b42318; }
+.input-preview { margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.preview-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; background: #f7f9fc; font-size: 11px; }
+.preview-heading > span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.preview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--border); }
+.input-molecule { margin: 0; min-width: 0; padding: 12px; background: #fff; }
+.input-molecule:only-child { grid-column: 1 / -1; }
+.input-molecule figcaption { color: var(--muted); font-size: 10px; }
+.input-molecule img { display: block; width: 100%; height: 132px; object-fit: contain; }
+.input-molecule code { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 10px; color: var(--muted); }
+.preview-molecule-status { display: block; font-size: 11px; color: var(--muted); padding: 12px 0; }
+.input-molecule[data-state=error] .preview-molecule-status { color: #b42318; min-height: 132px; display: flex; align-items: center; }
+.preview-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 14px; background: #fff; }
+.preview-note { font-size: 10px; color: var(--muted); margin: 0; }
+.input-preview > .preview-note { padding: 14px; }
+.preview-navigation { display: flex; gap: 6px; margin-left: auto; }
+.preview-navigation button { font-size: 10px; padding: 4px 9px; }
 .submit-row { display: flex; align-items: center; gap: 18px; margin-top: 24px; }
 .submit-row > span { font-size: 11px; color: var(--muted); }
 .submit-row button > span { padding-left: 16px; }

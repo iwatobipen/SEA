@@ -22,6 +22,28 @@ await evaluate(`document.getElementById('key').value=${JSON.stringify(process.en
 for(let i=0;i<30;i++){if(await evaluate("!document.getElementById('workspace').hidden"))break;await delay(200);}
 if(!await evaluate("!document.getElementById('workspace').hidden"))throw Error('Login failed');
 async function waitFor(expression){for(let i=0;i<200;i++){if(await evaluate(expression))return;await delay(100);}throw Error('Timed out: '+expression);}
+// Preview typed SMILES before creating any analysis, including salts, pages,
+// invalid records, and clearing the input while an image may be in flight.
+await evaluate("document.getElementById('load-example').click()");
+await waitFor("document.querySelectorAll('#query-input-preview .input-molecule[data-state=ready]').length===2");
+await evaluate("document.getElementById('query').value='CCO.[Na+]';document.getElementById('query').dispatchEvent(new Event('input'))");
+await waitFor("document.querySelector('#query-input-preview .input-molecule')?.dataset.state==='ready'");
+if(!await evaluate("document.querySelector('#query-input-preview img').src.includes('standardize=false')&&document.querySelector('#query-input-preview code').textContent==='CCO.[Na+]'"))throw Error('Typed structure preview changed the input');
+if(!await evaluate("document.querySelector('#query-input-preview .input-molecule').getBoundingClientRect().width===document.querySelector('#query-input-preview .preview-grid').getBoundingClientRect().width"))throw Error('Single-molecule preview did not use the available width');
+await evaluate("document.getElementById('query').value='CCO\\nCCCO\\nCCN\\nCCCN\\nCCCl\\nCCBr';document.getElementById('query').dispatchEvent(new Event('input'))");
+await waitFor("document.querySelectorAll('#query-input-preview .input-molecule[data-state=ready]').length===4");
+await evaluate("document.querySelector('#query-input-preview button[aria-label=\"Next input structures\"]').click()");
+await waitFor("document.querySelectorAll('#query-input-preview .input-molecule[data-state=ready]').length===2");
+if(!await evaluate("document.querySelector('#query-input-preview figcaption').textContent==='Molecule 5'"))throw Error('Preview pagination lost molecule order');
+await evaluate("document.querySelector('#query-input-preview button[aria-label=\"Previous input structures\"]').click()");
+await waitFor("document.querySelector('#query-input-preview figcaption')?.textContent==='Molecule 1'");
+await evaluate("document.getElementById('query').value='CCO\\nnot_a_smiles';document.getElementById('query').dispatchEvent(new Event('input'))");
+await waitFor("document.querySelector('#query-input-preview .input-molecule[data-state=error]')!==null");
+if(!await evaluate("document.getElementById('query').value==='CCO\\nnot_a_smiles'&&document.querySelector('#query-input-preview .input-molecule[data-state=error]').textContent.includes('Check the SMILES')"))throw Error('Invalid preview lost input or feedback');
+await evaluate("document.getElementById('query').value='CCN';document.getElementById('query').dispatchEvent(new Event('input'));document.getElementById('query').value='';document.getElementById('query').dispatchEvent(new Event('input'))");
+await delay(450);
+if(!await evaluate("document.getElementById('query-input-preview').hidden&&document.getElementById('query-input-preview').childElementCount===0"))throw Error('Clearing input retained a stale structure');
+if(!await evaluate("fetch('/api/v1/jobs').then(r=>r.json()).then(jobs=>jobs.length===0)"))throw Error('Preview created a search job');
 async function upload(id,name,content){
   await evaluate(`(()=>{document.getElementById('${id}-import-status').textContent='';const input=document.querySelector('input[data-for="${id}"]');const files=new DataTransfer();files.items.add(new File([${JSON.stringify(content)}],${JSON.stringify(name)},{type:'text/plain'}));input.files=files.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
   await waitFor(`!importing&&document.getElementById('${id}-import-status').textContent!==''`);
@@ -35,6 +57,7 @@ if(await evaluate("document.getElementById('query').value")!=='CCO\nCCCO')throw 
 await upload('query','invalid.sdf',process.env.SEA_SMOKE_MOL+'$$$$\ninvalid\n$$$$\n');
 if(!await evaluate("document.getElementById('query-import-status').classList.contains('error')&&document.getElementById('query-import-status').textContent.includes('Record 2')&&document.getElementById('query').value==='CCO\\nCCCO'"))throw Error('Invalid SDF changed the input or lost its record number');
 for(const id of ['left','right'])if(await evaluate(`document.getElementById('${id}').value`)!=='CCO\nCCCO')throw Error('Set import failed: '+id);
+await waitFor("['query','left','right'].every(id=>document.querySelectorAll('#'+id+'-input-preview .input-molecule[data-state=ready]').length===2)");
 await evaluate("document.querySelector('[data-draw=query]').click()");
 await waitFor('editorReady');
 await evaluate("document.getElementById('editor-add').click()");
@@ -51,6 +74,7 @@ const editorScreenshot=await call('Page.captureScreenshot',{format:'png'});fs.wr
 await evaluate("document.getElementById('editor-add').click();document.getElementById('editor-add').click()");
 await waitFor("!document.getElementById('structure-dialog').open");
 if(await evaluate("document.getElementById('query').value")!=='CCO\nCCCO\nCC')throw Error('Drawing was not appended exactly once');
+await waitFor("document.querySelectorAll('#query-input-preview .input-molecule[data-state=ready]').length===3");
 for(const id of ['left','right']){
   await evaluate(`document.querySelector('[data-draw=${id}]').click()`);
   await delay(200);
@@ -61,6 +85,15 @@ for(const id of ['left','right']){
 }
 // Restore the two-molecule file input before exercising the actual SEA job.
 await upload('query','compounds.sdf',process.env.SEA_SMOKE_SDF);
+await waitFor("document.querySelectorAll('#query-input-preview .input-molecule[data-state=ready]').length===2");
+await evaluate("document.getElementById('query-input-preview').scrollIntoView({behavior:'instant',block:'center'})");
+const inputDesktop=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('var/smoke-input-desktop.png',Buffer.from(inputDesktop.data,'base64'));
+await call('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+await evaluate("document.getElementById('query-input-preview').scrollIntoView({behavior:'instant',block:'center'})");
+await delay(200);
+if(!await evaluate("document.documentElement.scrollWidth<=window.innerWidth"))throw Error('Input structures overflow on mobile');
+const inputMobile=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('var/smoke-input-mobile.png',Buffer.from(inputMobile.data,'base64'));
+await call('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
 await evaluate("document.getElementById('predict-submit').click();document.getElementById('predict-submit').click()");
 for(let i=0;i<60;i++){if(await evaluate("!document.getElementById('result-panel').hidden"))break;await delay(500);}
 
@@ -160,4 +193,4 @@ await delay(300);const mobileEditor=await call('Page.captureScreenshot',{format:
 if(!await evaluate("document.getElementById('structure-dialog').scrollWidth<=document.getElementById('structure-dialog').clientWidth"))throw Error('Editor dialog overflows on mobile');
 if(externalRequests.length)throw Error('Unexpected external resources: '+externalRequests.join(', '));
 if(runtimeErrors.length)throw Error('Browser exceptions: '+JSON.stringify(runtimeErrors));
-console.log(JSON.stringify({browser_prediction_rows:rows,queries:2,real_jobs:3,checks:['English UI and errors','query switching','family and text filters','retained SEA ranks','keyboard selection','pair expansion','underflow','zero/empty results','exports','comparison','ensemble','history','mobile overflow'],structure_formats:['sdf','mol','smiles','csv'],editor:'local Ketcher 3.18.0',desktop:'var/smoke-desktop.png',mobile:'var/smoke-mobile.png'}));ws.close();
+console.log(JSON.stringify({browser_prediction_rows:rows,queries:2,real_jobs:3,checks:['English UI and errors','typed input previews','preview pagination/errors/clearing','file input previews','query switching','family and text filters','retained SEA ranks','keyboard selection','pair expansion','underflow','zero/empty results','exports','comparison','ensemble','history','mobile overflow'],structure_formats:['sdf','mol','smiles','csv'],editor:'local Ketcher 3.18.0',desktop:'var/smoke-desktop.png',mobile:'var/smoke-mobile.png'}));ws.close();

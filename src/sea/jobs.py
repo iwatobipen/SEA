@@ -9,6 +9,7 @@ from .data import home, load_dataset
 from .chemistry import normalize, raw_score
 from .statistics import significance
 from .annotations import target_info, load_annotations
+from .background import NullCache
 
 
 class Cancelled(Exception):
@@ -67,17 +68,18 @@ def claim(worker):
 
 @lru_cache(maxsize=2)
 def background_cache(root, dataset_id):
-    """Reuse deterministic null samples across jobs in this worker process.
+    """Reuse null samples in memory and on disk across workers and restarts.
 
     The dataset ID includes calibration settings, seed and the background pool.
     The root isolates deployments with separate SEA_HOME directories.
     """
-    return {}
+    return NullCache(root, dataset_id)
 
 
 def process(job):
     jid = job["id"]
     last_check = [0.]
+    last_progress = [0.]
     def check():
         if time.monotonic()-last_check[0] < .2:
             return
@@ -99,13 +101,15 @@ def process(job):
             a, ar = normalize(payload["left"])
             b, br = normalize(payload["right"])
             comparisons = [(None,a,b)]
+            comparison_count = 1
             output["normalization"] = {"left": ar, "right": br}
             ndb = 1
         else:
             queries = payload["queries"]
             normalized = [normalize(q) for q in queries]
-            comparisons = [(i,a,[structures[s] for s in t["smiles"]],t)
-                           for i,(a,_) in enumerate(normalized) for t in data["targets"]]
+            targets = [(t, [structures[s] for s in t["smiles"]]) for t in data["targets"]]
+            comparisons = ((i,a,b,t) for i,(a,_) in enumerate(normalized) for t,b in targets)
+            comparison_count = len(normalized) * len(targets)
             output["normalization"] = [rows for _, rows in normalized]
             ndb = len(data["targets"])
         null_cache = background_cache(str(home().resolve()), payload["dataset_id"])
@@ -119,8 +123,10 @@ def process(job):
             if target:
                 result["target"] = target_info(target[0], annotations)
             output["results"].append(result)
-            with connection() as con:
-                con.execute("UPDATE jobs SET progress=?, updated=? WHERE id=?", ((i+1)/len(comparisons),time.time(),jid))
+            if i + 1 == comparison_count or time.monotonic() - last_progress[0] >= .2:
+                with connection() as con:
+                    con.execute("UPDATE jobs SET progress=?, updated=? WHERE id=?", ((i+1)/comparison_count,time.time(),jid))
+                last_progress[0] = time.monotonic()
         if annotations:
             output["target_annotations"] = {k:v for k,v in annotations.items() if k != "targets"}
         output["results"].sort(key=lambda r: (r["query_index"] or 0, r["log_e_value"], -r["raw_score"]))

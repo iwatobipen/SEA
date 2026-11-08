@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Reproducible ligand-set similarity with a shared web and agent API"
 requires-python = ">=3.12"
 license = "MIT"
-dependencies = ["rdkit", "numpy", "scipy", "fastapi", "uvicorn", "httpx", "pydantic>=2", "python-multipart"]
+dependencies = ["rdkit", "numpy>=2", "scipy", "fastapi", "uvicorn", "httpx", "pydantic>=2", "python-multipart"]
 
 [project.scripts]
 sea = "sea.cli:main"

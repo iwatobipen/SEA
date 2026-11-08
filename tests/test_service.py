@@ -106,15 +106,15 @@ def test_worker_restart_recovers_claimed_job(service):
 
 
 def test_background_samples_are_reused_across_jobs(service,monkeypatch):
-    import sea.statistics as statistics
+    from sea.background import NullCache
     from sea.jobs import background_cache
     client,dataset,a,b=service
-    original=statistics.raw_score
+    original=NullCache.sample
     calls=[]
     def counted(*args, **kwargs):
         calls.append(1)
         return original(*args, **kwargs)
-    monkeypatch.setattr(statistics,'raw_score',counted)
+    monkeypatch.setattr(NullCache,'sample',counted)
     payload={'dataset_id':dataset,'left':['CCO'],'right':['CCO']}
     outputs=[]
     for _ in range(2):
@@ -122,12 +122,30 @@ def test_background_samples_are_reused_across_jobs(service,monkeypatch):
         process(claim('test'))
         outputs.append(client.get(f'/api/v1/jobs/{jid}/result',headers=a).json()['results'])
     assert outputs[0]==outputs[1]
-    assert len(calls)==999  # One null distribution, reused by the second job.
+    assert len(calls)==1  # One null distribution, reused by the second job.
     from sea.data import home
     cache=background_cache(str(home().resolve()),dataset)
     assert (1,1) in cache
     assert background_cache(str(home().resolve()),dataset) is cache
     assert background_cache(str(home().resolve()),'different-dataset') is not cache
+
+
+def test_input_preview_preserves_fragments_and_requires_authentication(service):
+    client,dataset,a,b=service
+    params={'smiles':'CC(=O)[O-].[Na+]','standardize':'false'}
+    assert client.get('/api/v1/structure',params=params).status_code==401
+    response=client.get('/api/v1/structure',params=params,headers=a)
+    assert response.status_code==200 and response.headers['content-type'].startswith('image/svg+xml')
+    from rdkit import Chem
+    from rdkit.Chem.Draw import rdMolDraw2D
+    mol=Chem.MolFromSmiles(params['smiles'])
+    drawer=rdMolDraw2D.MolDraw2DSVG(300,180)
+    drawer.DrawMolecule(mol)
+    drawer.FinishDrawing()
+    assert response.text==drawer.GetDrawingText()
+    assert client.get('/api/v1/structure',params={'smiles':params['smiles']},headers=a).text!=response.text
+    for invalid in ('', 'bad', 'C'*10001):
+        assert client.get('/api/v1/structure',params={'smiles':invalid,'standardize':'false'},headers=a).status_code==422
 
 
 def test_structure_import_and_prediction(service, monkeypatch):

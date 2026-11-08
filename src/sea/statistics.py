@@ -100,14 +100,17 @@ def significance(score, left_size, right_size, pool, model, comparisons=1, check
         key = (min(left_size,right_size), max(left_size,right_size))
         cached = null_cache.get(key) if null_cache is not None else None
         if cached is None:
-            values = []
-            for _ in range(trials):
-                check()
-                a = [pool[i] for i in rng.choice(len(pool), key[0], replace=False)]
-                b = [pool[i] for i in rng.choice(len(pool), key[1], replace=False)]
-                null, _, _ = raw_score(a, b, model["threshold"], 0, check)
-                values.append(null)
-            cached = np.sort(values)
+            if hasattr(null_cache, "sample"):
+                cached = null_cache.sample(pool, model, key, check)
+            else:
+                values = []
+                for _ in range(trials):
+                    check()
+                    a = [pool[i] for i in rng.choice(len(pool), key[0], replace=False)]
+                    b = [pool[i] for i in rng.choice(len(pool), key[1], replace=False)]
+                    null, _, _ = raw_score(a, b, model["threshold"], 0, check)
+                    values.append(null)
+                cached = np.sort(values)
             if null_cache is not None:
                 null_cache[key] = cached
         exceed = trials - int(np.searchsorted(cached, score, side="left"))

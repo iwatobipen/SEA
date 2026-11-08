@@ -71,6 +71,8 @@ Target prediction and both sides of set comparison support three input methods:
 
 Imported structures appear as isomeric SMILES in the input area for review before submitting a search or comparison. Record order and repeated molecules are retained during import. Stereochemistry, charges, and disconnected fragments are preserved in these SMILES; the existing SEA standardization and ensemble deduplication run when the job is submitted. SDF properties other than the molecule name are not used in the search.
 
+A 2D preview appears below each input after you pause typing SMILES. It also updates after loading an example, importing a file, or adding a drawing. Target search and both comparison sets show four molecules per page, with Previous/Next controls for larger inputs. These previews show the structures before search standardization, including salts and charges. Invalid SMILES display a rendering message without changing the input or creating a job. Search validation still checks every submitted molecule.
+
 Use concrete small-molecule structures. Query atoms/bonds, R groups, and reactions cannot be used as SEA ligands. On narrow screens, scroll horizontally inside the Ketcher editor to reach the full toolbar and drawing area.
 
 An invalid structure rejects the entire import and displays its one-based record number. Previously entered structures remain intact. CSV record numbers count data rows after the header; SMILES text uses line numbers; SDF uses molecule record numbers. Imports allow up to 1,000 records by default (`SEA_MAX_SET_MOLECULES`). Prediction and comparison limits still apply when submitting the resulting molecules. The browser allows files up to 10 MB, and the API request limit includes JSON encoding overhead, so files close to this size may need to be split.
@@ -221,6 +223,7 @@ Use `"queries": [smiles]` for a single ensemble. Invalid imports return HTTP 422
 - `POST /api/v1/jobs/{id}/cancel`: request cancellation.
 - `GET /api/v1/jobs`: your most recent 100 jobs.
 - `GET /api/v1/targets?dataset_id=...&q=...`: search reference targets.
+- `GET /api/v1/structure?smiles=...`: authenticated SVG depiction after standardization; add `standardize=false` to depict the entered structure, including its salts and charges.
 
 Default limits are 100 molecules per prediction request, 1,000 molecules per set comparison side, and a 10 MB request body. Configure these with `SEA_MAX_QUERY_MOLECULES`, `SEA_MAX_SET_MOLECULES`, and `SEA_MAX_UPLOAD_BYTES`. Invalid inputs return HTTP 422, authentication failures return 401, another user's jobs return 404, and requests for unfinished results return 409.
 
@@ -245,7 +248,14 @@ pixi install --locked -e paper-validation
 pixi run --locked -e paper-validation python scripts/compare_paper.py --download --output var/paper-comparison.json
 ```
 
-Zero-score comparisons return the exact p-value 1 without Monte Carlo sampling (`method=exact_zero`). Workers reuse deterministic background samples across jobs for the same dataset and set sizes. The web interface displays queue state and progress and prevents repeated submissions while a job is active.
+Zero-score comparisons return the exact p-value 1 without Monte Carlo sampling (`method=exact_zero`). Workers use batched fingerprint intersections for Monte Carlo evaluation and retain deterministic background samples in memory and under `$SEA_HOME/cache/null-v1/`. Files are isolated by the immutable dataset ID and set sizes, shared by workers in the same deployment, and reusable after a restart. The web interface displays queue state and progress and prevents repeated submissions while a job is active.
+
+See [worker performance](docs/performance.md) for the measured speedup, cache behavior, memory use, and a reproducible benchmark. After updating a running installation, restart its API and workers to load the new code:
+
+```bash
+./scripts/stop.sh
+./scripts/start.sh
+```
 
 Change the Monte Carlo trial count with `sea build --trials 99999` or `sea calibrate DATASET_ID --trials 99999`. More trials improve p-value resolution and increase computation time. The result's `execution` field records job duration and worker peak RSS in KiB.
 
