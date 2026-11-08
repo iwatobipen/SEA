@@ -118,15 +118,15 @@ def _legacy_process(job):
         annotations = load_annotations(payload["dataset_id"])
         output = {"dataset": data["manifest"], "threshold": model["threshold"], "results": []}
         if job["kind"] == "comparison":
-            a, ar = normalize(payload["left"])
-            b, br = normalize(payload["right"])
+            a, ar = normalize(payload["left"], data['manifest']['fingerprint'])
+            b, br = normalize(payload["right"], data['manifest']['fingerprint'])
             comparisons = [(None,a,b)]
             comparison_count = 1
             output["normalization"] = {"left": ar, "right": br}
             ndb = 1
         else:
             queries = payload["queries"]
-            normalized = [normalize(q) for q in queries]
+            normalized = [normalize(q, data['manifest']['fingerprint']) for q in queries]
             targets = [(t, [structures[s] for s in t["smiles"]]) for t in data["targets"]]
             comparisons = ((i,a,b,t) for i,(a,_) in enumerate(normalized) for t,b in targets)
             comparison_count = len(normalized) * len(targets)

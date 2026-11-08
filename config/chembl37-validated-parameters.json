@@ -1,0 +1,84 @@
+{
+  "source_dataset_id": "e898df53d9bb5240f087",
+  "expected_dataset_id": "9d52be7ff211a45d2709",
+  "fingerprint": {
+    "kind": "Morgan",
+    "bits": 2048,
+    "radius": 2,
+    "include_chirality": false,
+    "count_simulation": false,
+    "use_bond_types": true,
+    "include_ring_membership": true
+  },
+  "model": {
+    "threshold": 0.45,
+    "mean_a": 0.0,
+    "std_b": 0.0,
+    "std_c": 0.5,
+    "gumbel_loc": 0.0,
+    "gumbel_scale": 1.0,
+    "validation_ks": null,
+    "evd_usable": false,
+    "sizes": [
+      1,
+      10,
+      30,
+      100
+    ],
+    "seed": 42,
+    "repeats": 0,
+    "empirical_trials": 999,
+    "empirical_z_score": true,
+    "fingerprint": {
+      "kind": "Morgan",
+      "bits": 2048,
+      "radius": 2,
+      "include_chirality": false,
+      "count_simulation": false,
+      "use_bond_types": true,
+      "include_ring_membership": true
+    },
+    "calibration_method": "independent-fixed-budget-empirical-null-v1",
+    "analytic_tail_policy": "disabled; no extrapolated Gumbel tail is certified",
+    "parameter_validation_sha256": "e8202ff920d88eb11c1bd3d498d861d41f433b32976b30b8f2fcb037f21d3f7c"
+  },
+  "validation": {
+    "source_dataset_id": "e898df53d9bb5240f087",
+    "approved": true,
+    "protocol": "chembl-parameters-v1",
+    "report_sha256": "e8202ff920d88eb11c1bd3d498d861d41f433b32976b30b8f2fcb037f21d3f7c",
+    "report": "docs/chembl37-parameter-validation-results.json",
+    "selected_fingerprint": {
+      "kind": "Morgan",
+      "bits": 2048,
+      "radius": 2,
+      "include_chirality": false,
+      "count_simulation": false,
+      "use_bond_types": true,
+      "include_ring_membership": true
+    },
+    "selected_threshold": 0.45,
+    "calibration_method": "independent-fixed-budget-empirical-null-v1",
+    "gumbel_enabled": false,
+    "z_score_method": "sample mean and standard deviation of the actual-size null",
+    "test_queries": 512,
+    "null_trials": 199999,
+    "baseline_metrics": {
+      "mrr": 0.5543260937166213,
+      "recall_at_1": 0.35692695980086364,
+      "recall_at_5": 0.5601619452612682,
+      "recall_at_10": 0.6166966807791321
+    },
+    "selected_metrics": {
+      "mrr": 0.8375821047713125,
+      "recall_at_1": 0.5761093994836591,
+      "recall_at_5": 0.7934976941160603,
+      "recall_at_10": 0.8185108640794689
+    },
+    "scope": "Known-active target retrieval on a global scaffold holdout; not inactive discrimination or binding-probability calibration."
+  },
+  "report_file": "../docs/chembl37-parameter-validation-results.json",
+  "report_sha256": "e8202ff920d88eb11c1bd3d498d861d41f433b32976b30b8f2fcb037f21d3f7c",
+  "fingerprints_sha256": "2ee1a56bf9a8679dae2d5a6c965ffbd46f51240809f7452d6ce7ebae3322d32a",
+  "scope": "Exact source cohort and locked RDKit version only. Different data, filters or toolkit require fresh validation."
+}

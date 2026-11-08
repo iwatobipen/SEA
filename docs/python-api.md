@@ -369,8 +369,8 @@ from sea.data import load_dataset
 from sea.statistics import significance
 
 data, molecules = load_dataset(os.environ["SEA_DATASET_ID"])
-left, left_records = normalize(["CCO", "CCCO"])
-right, right_records = normalize(["CCCCO", "CCO"])
+left, left_records = normalize(["CCO", "CCCO"], data["manifest"]["fingerprint"])
+right, right_records = normalize(["CCCCO", "CCO"], data["manifest"]["fingerprint"])
 raw, pair_count, pairs = raw_score(left, right, data["model"]["threshold"])
 statistics = significance(
     raw, len(left), len(right), list(molecules.values()), data["model"], comparisons=1,
@@ -384,3 +384,12 @@ The default is the checkout's `var/` under Pixi. No API key, server, worker,
 or queued job is involved. The locked RDKit version must match the dataset.
 Use `SEAClient` when you want server-side target searches, persistent jobs,
 ownership, shared workers, and the same API result bundle as the web application.
+
+For the approved ChEMBL 37 model, select the manifest whose
+`parameter_validation.approved` is true and pin its ID. It uses Morgan radius 2
+and threshold 0.45, with empirical P/E and size-specific empirical Z scores.
+Older path-fingerprint references remain available for reproducibility. Local
+calculations must pass `data["manifest"]["fingerprint"]` to `normalize()` as in
+the example above, so query and reference representations match. The bare
+`molecule()`/`normalize()` defaults remain RDKit-path for compatibility. See
+[the parameter validation](chembl37-parameter-validation.md).

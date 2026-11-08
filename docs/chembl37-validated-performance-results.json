@@ -1,0 +1,21 @@
+{
+  "dataset_id": "9d52be7ff211a45d2709",
+  "model_id": "59cb366620706b4e3870",
+  "query": "COc1ccc2[nH]cc(c2c1)C(CC)CN",
+  "targets": 1517,
+  "reference_molecules": 441860,
+  "workers": 2,
+  "foreground_reserved": 1,
+  "api_preload_readiness_seconds": 6.053016477002529,
+  "cold_evidence_seconds": 0.7070798589993501,
+  "cold_screening_seconds": 5.988719971996034,
+  "evidence_during_refinement_seconds": 0.40132396899571177,
+  "screening_during_refinement_seconds": 0.4102429829945322,
+  "source_immutable": true,
+  "refinement_status": "cancelled",
+  "refinement_complete": false,
+  "planned_trials": 199999,
+  "cached_size_pairs": 9,
+  "largest_saved_prefix": 7079,
+  "scope": "Single local run using isolated API, two workers, database and empty cache. Preload readiness is separate. Full cold ChEMBL refinement deliberately paused; no final-latency or biological-accuracy claim. Repeated query reuses completed sampling prefixes during background extension."
+}

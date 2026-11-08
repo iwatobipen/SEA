@@ -161,6 +161,25 @@ pixi run sea evaluate DATASET_ID --output var/evaluation.json
 
 Calibration for larger sets takes longer. The initial build calibrates set sizes up to 100 molecules and uses Monte Carlo evaluation for larger sets. The evaluation command splits compounds by Murcko scaffold across all targets and recalibrates the background model using only the training partition. It compares Recall@1/5/10 and MRR for known-target retrieval against a maximum-Tanimoto baseline. Unmeasured pairs are not treated as negatives. Evaluation uses at most 100 queries by default.
 
+## Validated ChEMBL 37 scoring parameters
+
+The November 8, 2026 study selected **Morgan radius 2, 2,048 bits, Tanimoto threshold 0.45**, with empirical P/E evaluation for every positive score. The original path/0.56 model was already fitted to ChEMBL, but an independent audit found its ensemble Gumbel tail anti-conservative. The approved model disables that approximation and computes descriptive Z from actual size-specific background samples.
+
+On 512 globally separated test scaffolds at 199,999 trials, known-active retrieval improved from **MRR 0.5543 to 0.8376** and **Recall@10 0.6167 to 0.8185**. Parameters were selected on separate validation scaffolds. This supports the change within the tested grid; it does not establish binding probabilities, inactive discrimination, ensemble biological accuracy, or improvement in every protein family. Maximum Tanimoto performed better on this single-query benchmark. See the [study, limitations and reproduction commands](docs/chembl37-parameter-validation.md).
+
+The approved dataset is **`9d52be7ff211a45d2709`** (model `59cb366620706b4e3870`). The UI and automatic preload prefer it within ChEMBL 37; reload the page and select **Validated Morgan · Tc ≥ 0.45 · empirical null**. Original references and completed analyses remain available. API/Python callers must select the desired dataset ID explicitly.
+
+To install the approved variant when its exact source dataset `e898df53d9bb5240f087` is present:
+
+```bash
+./scripts/stop.sh
+pixi run sea apply-parameters e898df53d9bb5240f087 \
+  --recipe config/chembl37-validated-parameters.json
+./scripts/start.sh
+```
+
+The recipe verifies the cohort, evidence, all regenerated fingerprints and expected dataset identity. It refuses another cohort; use the documented validation workflow for other builds/releases. `sea build`, KS-only `sea calibrate`, and the small `sea evaluate` convenience check remain experimental workflows; they do not confer this approval. Recalibration retains the fingerprint but removes the approved label. Fixed-budget Balanced/Research refinement changes numerical precision without recalibration.
+
 ## Target families and species
 
 ChEMBL search results display the preferred target name, ChEMBL target ID, protein family, organism name, and NCBI taxonomy ID in the web interface. The same information is available in JSON results, CSV exports, and `/api/v1/targets`. Family labels come from ChEMBL's protein classification hierarchy, linked through target components. GPCR, Kinase, Ion channel, Nuclear receptor, and Transporter labels summarize their corresponding ancestors; other targets retain a ChEMBL category such as Protease or Hydrolase. All assigned classification paths are preserved, including multiple classifications. Families are not inferred from target names.

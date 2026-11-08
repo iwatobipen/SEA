@@ -1,5 +1,12 @@
 # Calculation method and differences from the original paper
 
+The description below records the original RDKit-path calibration. The
+[approved ChEMBL 37 parameter version](chembl37-parameter-validation.md) uses
+Morgan radius 2, 2,048 bits, threshold 0.45 and empirical evaluation for every
+positive score; it disables the unsupported Gumbel approximation. Reference
+manifests define representation and parameters per dataset. Old references
+retain the method below, and old results are preserved.
+
 1. Standardize structures using RDKit Cleanup → FragmentParent → Uncharger → canonical isomeric SMILES. Remove duplicate structures within each set and retain shared structures across sets. Tautomers are not merged.
 2. Generate RDKit path fingerprints with 2048 bits, `minPath=1`, and `maxPath=7`. Other settings use the defaults of the locked RDKit version. The raw score is the sum of Tanimoto coefficients for all molecule pairs at or above the threshold; the threshold is not subtracted from each contribution.
 3. Sample calibration molecules uniformly from the unique structures in the reference database. Sample without replacement within each set and independently between sets, allowing structures to overlap across sets.

@@ -1,0 +1,489 @@
+{
+  "source_dataset_id": "e898df53d9bb5240f087",
+  "budget": 199999,
+  "annotations_sha256": "7f020988cccef610166a46754a7f18af8a1c36df2ef31910d61b8a9ce3158409",
+  "grouping": "Anchor target primary ChEMBL family; descriptive subgroup analysis, not used for selection or adoption. Not a family-specific validation claim.",
+  "families": {
+    "Adhesion": {
+      "queries": 1,
+      "baseline": {
+        "mrr": 0.020833333333333332,
+        "recall_at_1": 0.0,
+        "recall_at_5": 0.0,
+        "recall_at_10": 0.0
+      },
+      "candidate": {
+        "mrr": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Aminoacyltransferase": {
+      "queries": 1,
+      "baseline": {
+        "mrr": 1.0,
+        "recall_at_1": 0.5,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "candidate": {
+        "mrr": 1.0,
+        "recall_at_1": 0.5,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Auxiliary transport protein": {
+      "queries": 1,
+      "baseline": {
+        "mrr": 0.07692307692307693,
+        "recall_at_1": 0.0,
+        "recall_at_5": 0.0,
+        "recall_at_10": 0.0
+      },
+      "candidate": {
+        "mrr": 1.0,
+        "recall_at_1": 0.5,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Cytochrome P450": {
+      "queries": 8,
+      "baseline": {
+        "mrr": 0.7504973295415135,
+        "recall_at_1": 0.6041666666666667,
+        "recall_at_5": 0.75,
+        "recall_at_10": 0.75
+      },
+      "candidate": {
+        "mrr": 0.6256203674315792,
+        "recall_at_1": 0.4791666666666667,
+        "recall_at_5": 0.625,
+        "recall_at_10": 0.625
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Enzyme": {
+      "queries": 18,
+      "baseline": {
+        "mrr": 0.5934363602078486,
+        "recall_at_1": 0.3680555555555556,
+        "recall_at_5": 0.5,
+        "recall_at_10": 0.5632880220646178
+      },
+      "candidate": {
+        "mrr": 0.9074074074074076,
+        "recall_at_1": 0.6462273443656422,
+        "recall_at_5": 0.8202324665090622,
+        "recall_at_10": 0.8414598108747045
+      },
+      "mrr_gain_95": [
+        0.04761403719737053,
+        0.5701485630992968
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Epigenetic regulator": {
+      "queries": 30,
+      "baseline": {
+        "mrr": 0.5138362546163793,
+        "recall_at_1": 0.36777777777777776,
+        "recall_at_5": 0.4735978835978835,
+        "recall_at_10": 0.5108994708994709
+      },
+      "candidate": {
+        "mrr": 0.7845685421776311,
+        "recall_at_1": 0.5336507936507935,
+        "recall_at_5": 0.7582539682539682,
+        "recall_at_10": 0.7788888888888889
+      },
+      "mrr_gain_95": [
+        0.1308954634959487,
+        0.4227796970839282
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "GPCR": {
+      "queries": 74,
+      "baseline": {
+        "mrr": 0.5484397198344513,
+        "recall_at_1": 0.34861647361647363,
+        "recall_at_5": 0.5493886743886743,
+        "recall_at_10": 0.6085585585585586
+      },
+      "candidate": {
+        "mrr": 0.846214114482937,
+        "recall_at_1": 0.597940797940798,
+        "recall_at_5": 0.8384813384813384,
+        "recall_at_10": 0.8867438867438867
+      },
+      "mrr_gain_95": [
+        0.2065783811215842,
+        0.3955228799578442
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Hydrolase": {
+      "queries": 30,
+      "baseline": {
+        "mrr": 0.5638066048363293,
+        "recall_at_1": 0.4444444444444444,
+        "recall_at_5": 0.5833333333333334,
+        "recall_at_10": 0.5833333333333334
+      },
+      "candidate": {
+        "mrr": 0.9001706620241969,
+        "recall_at_1": 0.7038888888888889,
+        "recall_at_5": 0.8766666666666667,
+        "recall_at_10": 0.8766666666666667
+      },
+      "mrr_gain_95": [
+        0.1816047339917216,
+        0.5007640840104813
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Ion channel": {
+      "queries": 30,
+      "baseline": {
+        "mrr": 0.6942797957523791,
+        "recall_at_1": 0.5055555555555556,
+        "recall_at_5": 0.8194444444444444,
+        "recall_at_10": 0.8194444444444444
+      },
+      "candidate": {
+        "mrr": 0.8612580426371305,
+        "recall_at_1": 0.7055555555555556,
+        "recall_at_5": 0.8527777777777779,
+        "recall_at_10": 0.8527777777777779
+      },
+      "mrr_gain_95": [
+        0.04893357533177205,
+        0.29553989912140344
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Isomerase": {
+      "queries": 4,
+      "baseline": {
+        "mrr": 0.5005904106626928,
+        "recall_at_1": 0.375,
+        "recall_at_5": 0.5,
+        "recall_at_10": 0.5
+      },
+      "candidate": {
+        "mrr": 0.5005904106626928,
+        "recall_at_1": 0.375,
+        "recall_at_5": 0.5,
+        "recall_at_10": 0.5
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Kinase": {
+      "queries": 130,
+      "baseline": {
+        "mrr": 0.4956026144270101,
+        "recall_at_1": 0.23036764534025103,
+        "recall_at_5": 0.4277635783086044,
+        "recall_at_10": 0.5224297336007827
+      },
+      "candidate": {
+        "mrr": 0.8328395885055201,
+        "recall_at_1": 0.41066092566963014,
+        "recall_at_5": 0.6702341885697634,
+        "recall_at_10": 0.7067608066197105
+      },
+      "mrr_gain_95": [
+        0.2583776752954844,
+        0.41597215573662744
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Lyase": {
+      "queries": 10,
+      "baseline": {
+        "mrr": 0.8500986193293885,
+        "recall_at_1": 0.5176190476190476,
+        "recall_at_5": 0.8314285714285713,
+        "recall_at_10": 0.86
+      },
+      "candidate": {
+        "mrr": 0.8566666666666667,
+        "recall_at_1": 0.45095238095238094,
+        "recall_at_5": 0.8380952380952381,
+        "recall_at_10": 0.9
+      },
+      "mrr_gain_95": [
+        -0.1434319526627219,
+        0.15
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Membrane receptor": {
+      "queries": 8,
+      "baseline": {
+        "mrr": 0.4800303937923365,
+        "recall_at_1": 0.22916666666666666,
+        "recall_at_5": 0.53125,
+        "recall_at_10": 0.53125
+      },
+      "candidate": {
+        "mrr": 0.8754646840148699,
+        "recall_at_1": 0.6354166666666666,
+        "recall_at_5": 0.875,
+        "recall_at_10": 0.875
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Nuclear receptor": {
+      "queries": 9,
+      "baseline": {
+        "mrr": 0.6119352005966292,
+        "recall_at_1": 0.4629629629629629,
+        "recall_at_5": 0.5370370370370371,
+        "recall_at_10": 0.5925925925925926
+      },
+      "candidate": {
+        "mrr": 0.7785004058441558,
+        "recall_at_1": 0.5555555555555555,
+        "recall_at_5": 0.6481481481481483,
+        "recall_at_10": 0.6481481481481483
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Other cytosolic protein": {
+      "queries": 7,
+      "baseline": {
+        "mrr": 0.6676587301587301,
+        "recall_at_1": 0.32142857142857145,
+        "recall_at_5": 0.7142857142857143,
+        "recall_at_10": 0.8571428571428571
+      },
+      "candidate": {
+        "mrr": 0.9285714285714286,
+        "recall_at_1": 0.6071428571428571,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Other membrane protein": {
+      "queries": 1,
+      "baseline": {
+        "mrr": 0.14285714285714285,
+        "recall_at_1": 0.0,
+        "recall_at_5": 0.0,
+        "recall_at_10": 1.0
+      },
+      "candidate": {
+        "mrr": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Other nuclear protein": {
+      "queries": 1,
+      "baseline": {
+        "mrr": 0.006535947712418301,
+        "recall_at_1": 0.0,
+        "recall_at_5": 0.0,
+        "recall_at_10": 0.0
+      },
+      "candidate": {
+        "mrr": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Oxidoreductase": {
+      "queries": 26,
+      "baseline": {
+        "mrr": 0.693101132514228,
+        "recall_at_1": 0.5576923076923077,
+        "recall_at_5": 0.8076923076923077,
+        "recall_at_10": 0.8461538461538461
+      },
+      "candidate": {
+        "mrr": 0.8885600337083484,
+        "recall_at_1": 0.782051282051282,
+        "recall_at_5": 0.8846153846153846,
+        "recall_at_10": 0.9230769230769231
+      },
+      "mrr_gain_95": [
+        0.00750899017102333,
+        0.3895463101363569
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Phosphatase": {
+      "queries": 3,
+      "baseline": {
+        "mrr": 0.6671283471837488,
+        "recall_at_1": 0.6666666666666666,
+        "recall_at_5": 0.6666666666666666,
+        "recall_at_10": 0.6666666666666666
+      },
+      "candidate": {
+        "mrr": 1.0,
+        "recall_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Phosphodiesterase": {
+      "queries": 6,
+      "baseline": {
+        "mrr": 0.5534094842506058,
+        "recall_at_1": 0.4166666666666667,
+        "recall_at_5": 0.6666666666666666,
+        "recall_at_10": 0.75
+      },
+      "candidate": {
+        "mrr": 1.0,
+        "recall_at_1": 0.75,
+        "recall_at_5": 1.0,
+        "recall_at_10": 1.0
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Protease": {
+      "queries": 38,
+      "baseline": {
+        "mrr": 0.4733011509678848,
+        "recall_at_1": 0.2785087719298246,
+        "recall_at_5": 0.5618421052631579,
+        "recall_at_10": 0.6135964912280701
+      },
+      "candidate": {
+        "mrr": 0.8160081995912376,
+        "recall_at_1": 0.569736842105263,
+        "recall_at_5": 0.8416666666666667,
+        "recall_at_10": 0.8644736842105264
+      },
+      "mrr_gain_95": [
+        0.19901984618542695,
+        0.4873623107141808
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Secreted protein": {
+      "queries": 11,
+      "baseline": {
+        "mrr": 0.4592955573798761,
+        "recall_at_1": 0.24242424242424246,
+        "recall_at_5": 0.5454545454545454,
+        "recall_at_10": 0.5454545454545454
+      },
+      "candidate": {
+        "mrr": 0.5571219972527165,
+        "recall_at_1": 0.33333333333333337,
+        "recall_at_5": 0.7272727272727273,
+        "recall_at_10": 0.8181818181818182
+      },
+      "mrr_gain_95": [
+        -0.19213738694766336,
+        0.37617440196969815
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Transcription factor": {
+      "queries": 8,
+      "baseline": {
+        "mrr": 0.2976206877727927,
+        "recall_at_1": 0.25,
+        "recall_at_5": 0.375,
+        "recall_at_10": 0.5
+      },
+      "candidate": {
+        "mrr": 0.6669870732431357,
+        "recall_at_1": 0.625,
+        "recall_at_5": 0.75,
+        "recall_at_10": 0.75
+      },
+      "mrr_gain_95": null,
+      "interval_scope": "Insufficient cohort (fewer than 10 queries); interval omitted."
+    },
+    "Transferase": {
+      "queries": 28,
+      "baseline": {
+        "mrr": 0.5219467610726866,
+        "recall_at_1": 0.39880952380952384,
+        "recall_at_5": 0.5535714285714286,
+        "recall_at_10": 0.5803571428571429
+      },
+      "candidate": {
+        "mrr": 0.9464638622247319,
+        "recall_at_1": 0.8184523809523808,
+        "recall_at_5": 0.9285714285714286,
+        "recall_at_10": 0.9285714285714286
+      },
+      "mrr_gain_95": [
+        0.24824692650978844,
+        0.6027772217872566
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Transporter": {
+      "queries": 15,
+      "baseline": {
+        "mrr": 0.8722222222222221,
+        "recall_at_1": 0.6444444444444444,
+        "recall_at_5": 0.9333333333333333,
+        "recall_at_10": 0.9666666666666667
+      },
+      "candidate": {
+        "mrr": 0.8670919996351032,
+        "recall_at_1": 0.6777777777777777,
+        "recall_at_5": 0.8666666666666667,
+        "recall_at_10": 0.8666666666666667
+      },
+      "mrr_gain_95": [
+        -0.08265257252326216,
+        0.08363095238095238
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    },
+    "Unclassified protein": {
+      "queries": 14,
+      "baseline": {
+        "mrr": 0.48055894670709315,
+        "recall_at_1": 0.39285714285714285,
+        "recall_at_5": 0.5,
+        "recall_at_10": 0.6071428571428571
+      },
+      "candidate": {
+        "mrr": 0.7195074571457514,
+        "recall_at_1": 0.5714285714285714,
+        "recall_at_5": 0.75,
+        "recall_at_10": 0.75
+      },
+      "mrr_gain_95": [
+        -0.06122448979591837,
+        0.5232406022753927
+      ],
+      "interval_scope": "Descriptive pointwise paired bootstrap; no multiplicity correction."
+    }
+  }
+}

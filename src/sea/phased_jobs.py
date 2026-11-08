@@ -131,13 +131,13 @@ def process(job):
                   "profile": effective, "source_job_id": jid, "refinement_job_id": None,
                   "total_comparisons": 0, "evaluated_comparisons": 0}}
         if job["kind"] == "comparison":
-            left, ar = normalize(payload["left"])
-            right, br = normalize(payload["right"])
+            left, ar = normalize(payload["left"], data['manifest']['fingerprint'])
+            right, br = normalize(payload["right"], data['manifest']['fingerprint'])
             entries = [(None, left, right, None)]
             bundle["normalization"] = {"left": ar, "right": br}
             ndb = 1
         else:
-            normalized = [normalize(q) for q in payload["queries"]]
+            normalized = [normalize(q, data['manifest']['fingerprint']) for q in payload["queries"]]
             targets = [(t, [structures[s] for s in t["smiles"]]) for t in data["targets"]]
             entries = ((i, a, b, t) for i, (a, _) in enumerate(normalized) for t, b in targets)
             bundle["normalization"] = [records for _, records in normalized]

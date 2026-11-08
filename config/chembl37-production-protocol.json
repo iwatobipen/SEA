@@ -1,0 +1,9 @@
+{
+  "version": "production-budget-confirmation-v1",
+  "declared_before_holdout_results_review": true,
+  "null_trials": 199999,
+  "query_partition": "same untouched 512 scaffold test queries as fixed protocol",
+  "candidate": "only frozen selection winner; no replacement if it fails",
+  "adoption": "both the original holdout criterion and production-budget paired MRR lower bound > 0 and Recall@10 lower bound >= -0.02 must pass",
+  "interpretation": "Rechecks numerical-budget stability on the same biological holdout, not an independent second biological replicate."
+}

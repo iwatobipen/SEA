@@ -11,6 +11,14 @@ cache and background refinement. See [statistics and UX](statistics-and-ux.md)
 and the [phased latency results](phased-performance-results.json). The measurements
 below remain the unchanged 999-trial scalar/optimized equivalence benchmark.
 
+The later [approved Morgan/0.45 reference](chembl37-parameter-validation.md)
+also passed the batched/scalar regression checks. A separate isolated run
+returned evidence in 0.707 s and cold screening in 5.989 s; a repeated search
+during refinement returned screening in 0.410 s. Startup preload took 6.053 s.
+These [new-reference timings](chembl37-validated-performance-results.json)
+cover one query/run, with full cold refinement deliberately paused. They are
+not a matched speedup experiment or a final-refinement latency measurement.
+
 ## What changed
 
 - Fingerprints are packed into a NumPy array on the first uncached Monte Carlo

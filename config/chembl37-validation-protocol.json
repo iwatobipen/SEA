@@ -1,0 +1,41 @@
+{
+  "version": "chembl-parameters-v1",
+  "seed": 20261108,
+  "split": "global achiral Murcko scaffold SHA256 first 8 hex digits modulo 5",
+  "training_buckets": [
+    2,
+    3,
+    4
+  ],
+  "selection_bucket": 1,
+  "test_bucket": 0,
+  "thresholds": [
+    0.2,
+    0.25,
+    0.3,
+    0.35,
+    0.4,
+    0.45,
+    0.5,
+    0.55,
+    0.56,
+    0.57,
+    0.6,
+    0.65,
+    0.7,
+    0.75,
+    0.8
+  ],
+  "representations": [
+    "RDKit-path",
+    "Morgan"
+  ],
+  "selection_metric": "mean reciprocal rank of first known target",
+  "queries_per_partition": 512,
+  "one_query_per_scaffold": true,
+  "initial_null_trials": 8191,
+  "confirmatory_null_trials": 32767,
+  "adoption": "selection winner only; independent test paired scaffold-bootstrap 95% lower MRR gain > 0 and Recall@10 lower gain >= -0.02; otherwise retain baseline",
+  "bootstrap_replicates": 10000,
+  "interpretation": "Known-active target retrieval only; unmeasured targets are not inactive. No precision, false-positive, FDR or binding-probability claims."
+}

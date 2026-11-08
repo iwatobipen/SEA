@@ -253,7 +253,7 @@ def validate_sets(dataset_id, sets, maximum):
         raise HTTPException(422,str(exc))
     for i,s in enumerate(sets):
         try:
-            mols,_ = normalize(s)
+            mols,_ = normalize(s, data['manifest']['fingerprint'])
         except InputError as exc:
             raise HTTPException(422,detail={"code":"invalid_smiles","set_index":i,"rows":exc.args[0]})
         if len(mols)>len(structures):

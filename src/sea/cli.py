@@ -58,6 +58,9 @@ def main():
     subs = parser.add_subparsers(dest="command",required=True)
     subs.add_parser("demo")
     subs.add_parser("datasets")
+    apply = subs.add_parser('apply-parameters', help='Apply a published scoring recipe to its exact validated reference cohort.')
+    apply.add_argument('dataset_id')
+    apply.add_argument('--recipe', required=True)
     key = subs.add_parser("key")
     key.add_argument("name")
     worker = subs.add_parser("worker")
@@ -96,6 +99,9 @@ def main():
         print(create_key(args.name))
     elif args.command=="datasets":
         print(json.dumps(list_datasets(),ensure_ascii=False,indent=2))
+    elif args.command=='apply-parameters':
+        from .data import apply_parameter_recipe
+        print(apply_parameter_recipe(args.dataset_id, args.recipe))
     elif args.command=="worker":
         if not 1<=args.count<=32:
             parser.error("count must be 1..32")
@@ -126,8 +132,8 @@ def main():
     elif args.command=="calibrate":
         from .data import load_dataset
         data,_=load_dataset(args.dataset_id)
-        provenance={k:v for k,v in data["manifest"].items() if k not in ("id","model_id","created_at","fingerprint","standardization","rdkit_version","target_count","molecule_count")}
-        print(save_dataset(data["targets"],provenance,sizes=tuple(map(int,args.sizes.split(","))),repeats=args.repeats,empirical_trials=args.trials))
+        provenance={k:v for k,v in data["manifest"].items() if k not in ("id","model_id","created_at","fingerprint","standardization","rdkit_version","target_count","molecule_count","parameter_validation","parameter_label")}
+        print(save_dataset(data["targets"],provenance,sizes=tuple(map(int,args.sizes.split(","))),repeats=args.repeats,empirical_trials=args.trials,fingerprint_spec=data['manifest']['fingerprint']))
     elif args.command=="annotate":
         from .annotations import annotate_dataset
         print(json.dumps(annotate_dataset(args.dataset_id,args.sqlite),ensure_ascii=False,indent=2))

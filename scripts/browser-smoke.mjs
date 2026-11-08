@@ -193,6 +193,20 @@ await evaluate("document.querySelector('#result-rows .target-button').click()");
 await delay(400);
 const mobileDetail=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('var/smoke-detail-mobile.png',Buffer.from(mobileDetail.data,'base64'));
 if(!await evaluate("document.documentElement.scrollWidth<=window.innerWidth"))throw Error('Selected target overflows on mobile');
+// Synthetic manifest fixtures check selection only; no scientific jobs are submitted.
+if(!await evaluate(`(async()=>{
+  const originalApi=api, previous=document.getElementById('dataset').value;
+  const source={...datasets[0],source:'ChEMBL',release:'ChEMBL_37',target_count:1517};
+  const fixtures=[{...source,id:'old',created_at:'2099-01-01'},
+    {...source,id:'approved',parameter_validation:{approved:true},parameter_label:'Validated Morgan · Tc ≥ 0.45 · empirical null'}];
+  try {
+    api=async(path,options)=>path==='/datasets'?structuredClone(fixtures):originalApi(path,options);
+    document.getElementById('dataset').replaceChildren(); await loadWorkspace();
+    const preferred=document.getElementById('dataset').value==='approved'&&document.getElementById('dataset').title.includes('Tc ≥ 0.45');
+    document.getElementById('dataset').value='old'; await loadWorkspace();
+    return preferred&&document.getElementById('dataset').value==='old'&&document.getElementById('dataset').options.length===2&&document.documentElement.scrollWidth<=window.innerWidth;
+  } finally {api=originalApi;await loadWorkspace();document.getElementById('dataset').value=previous;document.getElementById('dataset').onchange();}
+})()`))throw Error('Approved reference preference or explicit legacy selection failed');
 // Optional read-only visual review of an existing ChEMBL result bundle.
 if(process.env.SEA_SMOKE_PREVIEW){
   const preview=JSON.parse(fs.readFileSync(process.env.SEA_SMOKE_PREVIEW,'utf8'));

@@ -1,8 +1,12 @@
 from dataclasses import dataclass
+from functools import lru_cache
 from rdkit import Chem, DataStructs
+from rdkit.Chem import rdFingerprintGenerator
 from rdkit.Chem.MolStandardize import rdMolStandardize
 
 FP_SPEC = {"kind": "RDKit-path", "bits": 2048, "min_path": 1, "max_path": 7}
+MORGAN_SPEC = {"kind": "Morgan", "bits": 2048, "radius": 2, "include_chirality": False,
+               "count_simulation": False, "use_bond_types": True, "include_ring_membership": True}
 STANDARDIZATION = "cleanup-fragment-parent-uncharge-canonical-isomeric-v1"
 
 
@@ -16,7 +20,24 @@ class Molecule:
     fp: object
 
 
-def molecule(smiles: str) -> Molecule:
+@lru_cache(maxsize=8)
+def _morgan_generator(radius, bits, chirality, counts, bonds, rings):
+    return rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=bits,
+        includeChirality=chirality, countSimulation=counts, useBondTypes=bonds, includeRingMembership=rings)
+
+
+def fingerprint(mol, specification=None):
+    spec = specification or FP_SPEC
+    if spec['kind'] == 'RDKit-path':
+        return Chem.RDKFingerprint(mol, minPath=spec['min_path'], maxPath=spec['max_path'], fpSize=spec['bits'])
+    if spec['kind'] == 'Morgan':
+        generator = _morgan_generator(spec['radius'], spec['bits'], spec.get('include_chirality', False),
+            spec.get('count_simulation', False), spec.get('use_bond_types', True), spec.get('include_ring_membership', True))
+        return generator.GetFingerprint(mol)
+    raise ValueError('Unsupported dataset fingerprint specification.')
+
+
+def molecule(smiles: str, fingerprint_spec=None) -> Molecule:
     if not isinstance(smiles, str) or not smiles.strip() or len(smiles) > 10000:
         raise InputError("SMILES must be nonempty and no longer than 10,000 characters.")
     mol = Chem.MolFromSmiles(smiles)
@@ -29,16 +50,16 @@ def molecule(smiles: str) -> Molecule:
     if not any(a.GetAtomicNum() == 6 for a in mol.GetAtoms()):
         raise InputError("Enter an organic molecule containing carbon.")
     canonical = Chem.MolToSmiles(mol, isomericSmiles=True)
-    return Molecule(canonical, Chem.RDKFingerprint(mol, minPath=1, maxPath=7, fpSize=2048))
+    return Molecule(canonical, fingerprint(mol, fingerprint_spec))
 
 
-def normalize(smiles: list[str]):
+def normalize(smiles: list[str], fingerprint_spec=None):
     if not smiles:
         raise InputError("The ligand set is empty.")
     unique, rows, errors = {}, [], []
     for i, value in enumerate(smiles, 1):
         try:
-            item = molecule(value)
+            item = molecule(value, fingerprint_spec)
             duplicate = item.smiles in unique
             unique.setdefault(item.smiles, item)
             rows.append({"row": i, "input": value, "smiles": item.smiles, "duplicate": duplicate})

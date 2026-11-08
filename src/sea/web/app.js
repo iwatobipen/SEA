@@ -114,20 +114,22 @@ for (const id of ['query', 'left', 'right']) $(id).addEventListener('input', upd
 function libraryName(dataset) {
   if (dataset.source === 'synthetic-demo') return 'Synthetic demo · chemical groups';
   const release = String(dataset.release || '').replace(/^chembl[_\s-]*/i, '');
-  return `${dataset.source} ${release} · ${plural(dataset.target_count, 'target')}`;
+  return `${dataset.source} ${release} · ${plural(dataset.target_count, 'target')}${dataset.parameter_label ? ' · ' + dataset.parameter_label : ''}`;
 }
 async function loadWorkspace() {
   try {
     const previous = $('dataset').value;
     datasets = (await api('/datasets')).sort((a, b) =>
       Number(b.source === 'ChEMBL') - Number(a.source === 'ChEMBL') ||
-      String(b.release).localeCompare(String(a.release), 'en', {numeric: true}) || a.id.localeCompare(b.id));
+      String(b.release).localeCompare(String(a.release), 'en', {numeric: true}) ||
+      Number(Boolean(b.parameter_validation?.approved)) - Number(Boolean(a.parameter_validation?.approved)) || a.id.localeCompare(b.id));
     $('dataset').replaceChildren(...datasets.map(d => {
       const option = el('option', '', libraryName(d)); option.value = d.id; return option;
     }));
     if (datasets.some(d => d.id === previous)) $('dataset').value = previous;
     $('dataset').onchange = () => {
       const d = datasets.find(d => d.id === $('dataset').value);
+      $('dataset').title = d ? libraryName(d) : '';
       $('dataset-info').textContent = d ? `${plural(d.molecule_count, 'reference molecule')} · RDKit ${d.rdkit_version}` : 'No reference libraries. Ask your administrator to build a dataset.';
       $('attribution').textContent = d?.attribution || 'SEA Open';
       refreshInputControls();
@@ -326,7 +328,7 @@ function render(data) {
   $('results-title').textContent = keys[0] === 'comparison' ? 'Set comparison results' : 'Target search results';
   const elapsed = data.execution?.elapsed_seconds;
   const fingerprint = data.dataset.fingerprint;
-  $('result-context').textContent = `${libraryName(data.dataset)}${fingerprint ? ` · ${fingerprint.kind} · ${integer(fingerprint.bits)} bits` : ''}${Number.isFinite(elapsed) ? ` · ${elapsed.toFixed(2)} s of computation` : ''}`;
+  $('result-context').textContent = `${libraryName(data.dataset)}${fingerprint ? ` · ${fingerprint.kind} · ${integer(fingerprint.bits)} bits` : ''} · Tc ≥ ${data.threshold}${Number.isFinite(elapsed) ? ` · ${elapsed.toFixed(2)} s of computation` : ''}`;
   $('metadata').textContent = JSON.stringify({dataset: data.dataset, threshold: data.threshold, normalization: data.normalization, execution: data.execution, analysis: data.analysis, job_id: currentJob}, null, 2);
   const analysis = data.analysis;
   $('analysis-banner').hidden = !analysis;

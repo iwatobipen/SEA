@@ -1,0 +1,136 @@
+{
+  "fingerprint": {
+    "kind": "Morgan",
+    "bits": 2048,
+    "radius": 2,
+    "include_chirality": false,
+    "count_simulation": false,
+    "use_bond_types": true,
+    "include_ring_membership": true
+  },
+  "standardization": "cleanup-fragment-parent-uncharge-canonical-isomeric-v1",
+  "rdkit_version": "2026.09.2",
+  "target_count": 1517,
+  "molecule_count": 441860,
+  "source": "ChEMBL",
+  "release": "ChEMBL_37",
+  "source_sha256": "4be13df3b68e25dcd0bff44bf094033b5aebe98f415acdc8c1cdf380e0c15142",
+  "filters": {
+    "organism_tax_id": 9606,
+    "target_type": "SINGLE PROTEIN",
+    "assay_type": "B",
+    "confidence_score": 9,
+    "activity_types": [
+      "Ki",
+      "Kd",
+      "IC50"
+    ],
+    "standard_relation": "=",
+    "min_pchembl": 6.0,
+    "min_ligands": 10
+  },
+  "counts": {
+    "candidate_rows": 1562469,
+    "quality_excluded": 577028,
+    "invalid_structure": 61
+  },
+  "sqlite_version": [
+    [
+      "Bioassay Ontology 2.0",
+      null,
+      "BAO version used for assays (http://bioassayontology.org/)"
+    ],
+    [
+      "COCONUT 2025-07",
+      null,
+      "COCONUT version used for natural product flagging (https://coconut.naturalproducts.net/)"
+    ],
+    [
+      "ChEMBL_37",
+      "2026-05-01 00:00:00.000000",
+      "ChEMBL Release 37 (https://www.ebi.ac.uk/chembl)"
+    ],
+    [
+      "ChEMBL_Structure_Pipeline 1.2.0",
+      null,
+      "ChEMBL_Structure_Pipeline version used for chemical structure curation (https://github.com/chembl/ChEMBL_Structure_Pipeline)"
+    ],
+    [
+      "EFO 3.74.0",
+      null,
+      "EFO version used for indication and warning data (https://www.ebi.ac.uk/efo/)"
+    ],
+    [
+      "Gene Ontology 2024-02-22",
+      null,
+      "GO version used for genes (https://www.ebi.ac.uk/QuickGO/)"
+    ],
+    [
+      "InChI v1.06",
+      null,
+      "InChI version used for compound registration (https://github.com/IUPAC-InChI/InChI)"
+    ],
+    [
+      "MeSH 2025",
+      null,
+      "MeSH version used for indication data (https://www.nlm.nih.gov/mesh/meshhome.html)"
+    ],
+    [
+      "RDKit 2022.09.4",
+      null,
+      "RDKit version used for standardisation and salt stripping of chemical structures (https://www.rdkit.org/)"
+    ],
+    [
+      "Swiss-Prot 2025_03",
+      null,
+      "UniProtKB version used for component_sequences data (https://www.expasy.org/resources/uniprotkb)"
+    ],
+    [
+      "UBERON 2024-03-22",
+      null,
+      "UBERON version used for tissues (http://obophenotype.github.io/uberon/)"
+    ]
+  ],
+  "attribution": "ChEMBL data is from https://www.ebi.ac.uk/chembl \u2014 version ChEMBL_37",
+  "data_license": "CC-BY-SA-3.0",
+  "created_at": "2026-11-08T06:07:24.577594+00:00",
+  "parent_dataset_id": "e898df53d9bb5240f087",
+  "parameter_validation": {
+    "source_dataset_id": "e898df53d9bb5240f087",
+    "approved": true,
+    "protocol": "chembl-parameters-v1",
+    "report_sha256": "e8202ff920d88eb11c1bd3d498d861d41f433b32976b30b8f2fcb037f21d3f7c",
+    "report": "docs/chembl37-parameter-validation-results.json",
+    "selected_fingerprint": {
+      "kind": "Morgan",
+      "bits": 2048,
+      "radius": 2,
+      "include_chirality": false,
+      "count_simulation": false,
+      "use_bond_types": true,
+      "include_ring_membership": true
+    },
+    "selected_threshold": 0.45,
+    "calibration_method": "independent-fixed-budget-empirical-null-v1",
+    "gumbel_enabled": false,
+    "z_score_method": "sample mean and standard deviation of the actual-size null",
+    "test_queries": 512,
+    "null_trials": 199999,
+    "baseline_metrics": {
+      "mrr": 0.5543260937166213,
+      "recall_at_1": 0.35692695980086364,
+      "recall_at_5": 0.5601619452612682,
+      "recall_at_10": 0.6166966807791321
+    },
+    "selected_metrics": {
+      "mrr": 0.8375821047713125,
+      "recall_at_1": 0.5761093994836591,
+      "recall_at_5": 0.7934976941160603,
+      "recall_at_10": 0.8185108640794689
+    },
+    "scope": "Known-active target retrieval on a global scaffold holdout; not inactive discrimination or binding-probability calibration."
+  },
+  "parameter_label": "Validated Morgan \u00b7 Tc \u2265 0.45 \u00b7 empirical null",
+  "id": "9d52be7ff211a45d2709",
+  "model_id": "59cb366620706b4e3870"
+}

@@ -120,6 +120,9 @@ def significance(score, left_size, right_size, pool, model, comparisons=1, check
         log_p = math.log(p)
         resolution = 1/(trials+1)
         method = "monte_carlo"
+        if model.get('empirical_z_score'):
+            empirical_sd = float(np.std(cached, ddof=1)) if trials > 1 else 0.
+            z = float((score - np.mean(cached)) / empirical_sd) if empirical_sd > 0 else None
     return {"z_score": z, "p_value": p, "log_p_value": log_p,
             "e_value": p*comparisons, "log_e_value": log_p+math.log(comparisons),
             "comparisons": comparisons, "method": method, "p_resolution": resolution}

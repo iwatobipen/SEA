@@ -6,6 +6,14 @@ and [Python API](python-api.md#fixed-budget-refinement-and-early-evidence) for u
 The cost study below predates implementation and remains a limited numerical
 experiment, not a biological validation study.
 
+The subsequent [ChEMBL 37 parameter validation](chembl37-parameter-validation.md)
+adopted a separate Morgan/0.45 reference and disabled its Gumbel approximation
+after independent null-tail failures in the original model. All positive scores
+in the approved reference use fixed-budget empirical P/E; descriptive Z uses
+the actual size-specific null sample. The original dataset and the numerical
+cost study below remain unchanged. Biological evidence now includes a separate
+known-active scaffold holdout, with the limits documented in that report.
+
 ## Recommendation
 
 Return molecular evidence and a clearly provisional screening result promptly,
