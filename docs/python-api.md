@@ -209,6 +209,79 @@ an in-flight HTTP operation uses the separate constructor timeout and may finish
 after the polling period. The helpers are synchronous and block the calling
 thread while waiting. They do not automatically retry job-creation requests.
 
+## Fixed-budget refinement and early evidence
+
+Existing client methods default to `statistics_profile="legacy"` for compatibility.
+For the web application's workflow, explicitly select `balanced` (199,999 final
+trials) or `research` (999,999). Both first save 999-trial screening results.
+`wait_for="evidence"` returns the first available snapshot, `"screening"` waits
+for the submitted screening artifact, and `"final"` (the default) follows the
+linked precision job to a completed fixed-budget artifact. Evidence can already
+be screening/final if the server finishes before polling. `wait_for="screening"`
+on a refinement ID waits for that refinement's completion; use the source ID
+when you specifically need its screening artifact.
+
+```python
+from pathlib import Path
+
+with SEAClient() as client:
+    source_id = client.submit_prediction(
+        [["COc1ccc2[nH]cc(c2c1)C(CC)CN"]],
+        dataset_id=dataset_id, top_k=20, statistics_profile="balanced",
+    )
+    evidence = client.wait(source_id, wait_for="evidence", timeout=60)
+    print(evidence["analysis"]["phase"])
+    screening = client.wait(source_id, wait_for="screening", timeout=3600)
+    refinement_id = screening["analysis"]["refinement_job_id"]
+    # The UI and other searches remain usable during precision work.
+    final = client.wait(source_id, wait_for="final", timeout=7200)
+    assert final["analysis"]["complete"]
+    print(final["analysis"]["profile"])
+    for row in final["results"]:
+        print(row["e_value"], row["statistics"])
+    Path("final.csv").write_text(client.get_csv(refinement_id), encoding="utf-8")
+```
+
+A blocking convenience call is `client.predict("CCO", dataset_id=dataset_id,
+statistics_profile="balanced", wait_for="final")`; `compare()` accepts the same
+options. One polling deadline covers both screening and refinement. A timeout
+reports the currently awaited job ID and never cancels server work.
+
+`client.get_preview(id)` retrieves the latest snapshot without waiting (409 if
+none exists). A snapshot is **not** a final artifact: inspect `analysis.phase`,
+`analysis.complete`, and each row's `statistics.phase`. Pending P/E and Z values
+are `None`, with method `pending`. Refinement previews can mix completed final
+rows with provisional screening rows. Do not export or interpret them as a
+whole completed analysis. Failed/cancelled jobs raise `SEAJobError` in `wait()`,
+even if a partial preview remains available through `get_preview()`.
+
+```python
+with SEAClient() as client:
+    client.cancel(refinement_id)  # Running work stops at a cancellation check.
+    # Wait until status is cancelled, then resume the same declared budget:
+    # client.resume(refinement_id)
+    # final = client.wait(refinement_id, timeout=7200)
+    research_id = client.refine(source_id, statistics_profile="research")
+    # Repeating refine(source_id, statistics_profile="research") returns this ID.
+```
+
+`resume()` accepts failed/cancelled refinement jobs only. Sampling retains
+unsorted values and RNG state atomically, so continuation matches uninterrupted
+sampling exactly. Completed source/final results are not overwritten when a
+new profile is requested. `get_csv(source_id)` remains the screening CSV;
+`get_csv(refinement_id)` retrieves the final artifact only after completion.
+The source job's status can be `completed` while its refinement is queued/running.
+
+`analysis.profile` records its version/ID, dataset/model IDs, seed, null definition,
+planned trials, confidence level and **per-query** testing family. Each row's
+`statistics` adds actual trials, exceedances, P/E-tail intervals, method, phase
+and status (`pending`, `resolution_limited`, `uncertain`, `evaluated`, `exact`,
+`analytic`). Intervals are pointwise fixed-budget Monte Carlo uncertainty,
+not simultaneous or anytime-valid intervals and not binding probabilities.
+A row can remain resolution-limited/uncertain after final completion. Top K
+controls output only; refinement still evaluates all positive-score Monte Carlo
+comparisons using the original number of targets per query.
+
 ## Handle job errors and timeouts
 
 ```python

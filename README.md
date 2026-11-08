@@ -93,6 +93,28 @@ The detail panel shows query/reference structures side by side, four-decimal Tan
 
 At narrow screen widths, the list and selected detail stack vertically, and target rows become compact cards. **Back to results** returns from a selected target to the list. **Job history** reopens previous analyses using the same result explorer. Interface copy, validation errors, and new synthetic-demo names are English; original datasets and stored analyses are preserved. Older built-in demo names are translated for display using their stable demo IDs.
 
+## Statistical precision without blocking exploration
+
+The web UI defaults to **Balanced**. It publishes molecular evidence first (P/E are pending), saves a **999-trial screening** artifact, and automatically queues a separate **199,999-trial refinement**. **Research** uses 999,999 final trials. Eligible calibrated Gumbel evaluations keep their analytic method; zero raw scores keep exact P = 1 and require no sampling. This changes numerical precision without rebuilding the reference or changing its fingerprints, threshold, or statistical null.
+
+You can start another search while refinement runs. The current query, rows, and selection remain in place until you choose **Apply latest statistics** or **Apply final results**. Use **Pause refinement** and **Resume refinement** to interrupt and continue the declared budget. Closing the browser leaves server work running; reopen the refinement from **Job history**. With two or more workers, one worker is reserved for new searches/screening, and all other workers prefer queued foreground jobs before refinements. One-worker installations process jobs serially.
+
+The result banner distinguishes **Evidence**, **Screening**, **Refinement**, and **Final**. Each row records its own phase, actual trial count, exceedance count, and pointwise 95% Clopper–Pearson interval for the limiting null-tail probability and its E-value scaling. **Resolution-limited** means zero exceedances; the estimate is `(k + 1) / (B + 1)`, never zero or an upper bound. **Uncertain** means the interval crosses the E = 0.05 reference threshold. This threshold is an interpretation aid, not a biologically validated cutoff. Final means the fixed computation finished; uncertainty and model limitations may remain.
+
+Refinement covers every positive-score Monte Carlo comparison, including targets outside the displayed top K. E always uses the original target count per query; a batch does not silently become a batch-wide test. For 1,517 targets, Balanced has a minimum reported E of 0.007585, versus 1.517 at 999 trials. More trials need not lower E or improve biological discrimination. Cold refinement across many target sizes can take minutes or longer; evidence remains usable during that work. See [statistical precision and UX](docs/statistics-and-ux.md) for assumptions and limits.
+
+Completed screening and final JSON/CSV artifacts are separate and immutable. Exports identify the profile/version, planned and actual budgets, counts, uncertainty, source/refinement job IDs, and completion state. Downloads are available for stored completed artifacts; previews are available through the preview API. Existing API/Python callers retain the **legacy** default; opt in with `statistics_profile="balanced"` or `"research"` and explicitly choose which phase to wait for.
+
+The API and worker supervisor preload one reference before readiness by default (newest ChEMBL library, otherwise newest available). Set `SEA_PRELOAD_DATASETS=DATASET_ID` or a comma-separated list of at most two IDs to choose references; `SEA_PRELOAD_DATASETS=none` disables preloading. Startup includes this load rather than charging it to the first selected-library request. Other references still load on demand.
+
+Precompute frequent target-size distributions outside interactive requests:
+
+```bash
+pixi run sea warm DATASET_ID --profile balanced --query-size 1 --limit 20
+```
+
+This prepares the 20 most frequent actual target sizes, retains atomic sampling checkpoints, and does not create a dataset or a job. It can be interrupted and rerun. Different profiles reuse the same deterministic unsorted prefix and saved RNG state. The `cache/null-v2/` cache is separate from the legacy cache, coordinates writers, and allows screening to read completed prefixes while refinement extends them. Set-size pairs, dataset, null definition, implementation version, threshold and seed identify streams. Worker sample-array memory is capped at 64 MiB per reference cache. Run warming before interactive use when practical; cold work still consumes CPU even with a reserved foreground worker.
+
 ## Building a ChEMBL reference database
 
 Choose a release from the [official distribution](https://ftp.ebi.ac.uk/pub/databases/chembl/ChEMBLdb/releases/). The `--sha256` argument must be the SHA256 checksum of the **compressed SQLite archive `chembl_<release>_sqlite.tar.gz`**, exactly as downloaded. It is not the checksum of the extracted `.db` file, `checksums.txt`, or another ChEMBL download such as the SDF, MySQL, or PostgreSQL archive.
@@ -220,7 +242,10 @@ Use `"queries": [smiles]` for a single ensemble. Invalid imports return HTTP 422
 
 - `GET /api/v1/jobs/{id}`: job status and progress.
 - `GET /api/v1/jobs/{id}/result`: JSON results; add `?format=csv` for CSV.
-- `POST /api/v1/jobs/{id}/cancel`: request cancellation.
+- `GET /api/v1/jobs/{id}/preview`: latest evidence/partial statistics; HTTP 409 until a snapshot exists.
+- `POST /api/v1/jobs/{id}/refine`: request/retrieve a linked refinement with `{"statistics_profile":"balanced"}` or `"research"`; one job per source/profile.
+- `POST /api/v1/jobs/{id}/resume`: requeue a cancelled or failed refinement, retaining checkpoints.
+- `POST /api/v1/jobs/{id}/cancel`: cancel a search or pause a refinement.
 - `GET /api/v1/jobs`: your most recent 100 jobs.
 - `GET /api/v1/targets?dataset_id=...&q=...`: search reference targets.
 - `GET /api/v1/structure?smiles=...`: authenticated SVG depiction after standardization; add `standardize=false` to depict the entered structure, including its salts and charges.
@@ -239,7 +264,7 @@ Issue a separate API key for each user or agent. Browser sign-in uses an eight-h
 pixi run test
 ```
 
-See [docs/method.md](docs/method.md) for calculation details and [docs/validation.md](docs/validation.md) for the recorded checks. RDKit and ChEMBL replace the original Daylight fingerprints and MDDR dataset, so numerical agreement with the original paper is not claimed. E-values are not binding probabilities. With the default 999 Monte Carlo trials, the smallest possible p-value is 0.001; this resolution may be insufficient when searching many targets.
+See [docs/method.md](docs/method.md) for calculation details and [docs/validation.md](docs/validation.md) for the recorded checks. RDKit and ChEMBL replace the original Daylight fingerprints and MDDR dataset, so numerical agreement with the original paper is not claimed. E-values are not binding probabilities. Legacy calls and preliminary screening use 999 Monte Carlo trials (minimum P = 0.001). The web UI automatically follows screening with fixed-budget refinement; this increases numerical resolution without establishing biological accuracy.
 
 An executed [comparison with the original paper](docs/paper-comparison.md) diagnoses fingerprint-dependent Tanimoto differences and replays all 60,516 published comparisons from their raw scores. It verifies statistical ordering, with explicit numerical discrepancies and limits; it does not establish equivalent biological prediction accuracy. Reproduce it in the optional Pixi environment:
 

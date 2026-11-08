@@ -15,6 +15,8 @@ import httpx
 
 
 StructureFormat = Literal["sdf", "mol", "smiles", "csv"]
+StatisticsProfile = Literal["legacy", "balanced", "research"]
+WaitFor = Literal["evidence", "screening", "final"]
 _FORMATS = {".sdf": "sdf", ".sd": "sdf", ".mol": "mol", ".smi": "smiles",
             ".smiles": "smiles", ".txt": "smiles", ".csv": "csv"}
 
@@ -109,6 +111,19 @@ class SEAClient:
         """Fetch a completed job. The server returns HTTP 409 if unfinished."""
         return self._request("GET", _job_path(job_id) + "/result").json()
 
+    def get_preview(self, job_id: str) -> dict[str, Any]:
+        """Fetch the latest partial snapshot; HTTP 409 means none is ready."""
+        return self._request("GET", _job_path(job_id) + "/preview").json()
+
+    def refine(self, job_id: str, *, statistics_profile: Literal["balanced", "research"] = "balanced") -> str:
+        if statistics_profile not in ("balanced", "research"):
+            raise ValueError("Refinement profile must be balanced or research.")
+        return self._request("POST", _job_path(job_id) + "/refine",
+                             json={"statistics_profile": statistics_profile}).json()["job_id"]
+
+    def resume(self, job_id: str) -> dict[str, Any]:
+        return self._request("POST", _job_path(job_id) + "/resume").json()
+
     def get_csv(self, job_id: str) -> str:
         return self._request("GET", _job_path(job_id) + "/result", params={"format": "csv"}).text
 
@@ -117,8 +132,10 @@ class SEAClient:
         return self._request("POST", _job_path(job_id) + "/cancel").json()
 
     def submit_prediction(self, queries: Iterable[Iterable[str]], *, dataset_id: str,
-                          top_k: int = 20) -> str:
+                          top_k: int = 20, statistics_profile: StatisticsProfile = "legacy") -> str:
         """Submit explicit ensembles: [['CCO'], ['CCN']] runs two searches."""
+        if statistics_profile not in ("legacy", "balanced", "research"):
+            raise ValueError("Use the legacy, balanced or research statistics profile.")
         if isinstance(queries, str):
             raise ValueError("queries must contain ligand sets, for example [['CCO']].")
         sets = []
@@ -129,30 +146,46 @@ class SEAClient:
         if not sets:
             raise ValueError("Provide at least one query ligand set.")
         response = self._request("POST", "predictions", json={
-            "dataset_id": dataset_id, "queries": sets, "top_k": top_k})
+            "dataset_id": dataset_id, "queries": sets, "top_k": top_k, "statistics_profile": statistics_profile})
         return response.json()["job_id"]
 
     def submit_comparison(self, left: str | Iterable[str], right: str | Iterable[str], *,
-                          dataset_id: str) -> str:
+                          dataset_id: str, statistics_profile: StatisticsProfile = "legacy") -> str:
+        if statistics_profile not in ("legacy", "balanced", "research"):
+            raise ValueError("Use the legacy, balanced or research statistics profile.")
         response = self._request("POST", "comparisons", json={
-            "dataset_id": dataset_id, "left": _smiles(left), "right": _smiles(right)})
+            "dataset_id": dataset_id, "left": _smiles(left), "right": _smiles(right), "statistics_profile": statistics_profile})
         return response.json()["job_id"]
 
     def wait(self, job_id: str, *, timeout: float = 3600.0,
-             poll_interval: float = 1.0) -> dict[str, Any]:
+             poll_interval: float = 1.0, wait_for: WaitFor = "final") -> dict[str, Any]:
         """Poll until complete and return the result bundle; never cancel on timeout.
 
         timeout bounds the polling period. In-flight HTTP operations use the
         constructor's separate httpx timeout and may finish after that period.
         """
+        if wait_for not in ("evidence", "screening", "final"):
+            raise ValueError("wait_for must be evidence, screening or final.")
         deadline = time.monotonic() + _positive(timeout, "timeout")
         interval = _positive(poll_interval, "poll_interval")
         while time.monotonic() < deadline:
             job = self.get_job(job_id)
-            if job["status"] == "completed":
-                return self.get_result(job_id)
             if job["status"] in ("failed", "cancelled"):
                 raise SEAJobError(job)
+            if wait_for == "evidence":
+                try:
+                    return self.get_preview(job_id)
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code != 409:
+                        raise
+            if job["status"] == "completed":
+                result = self.get_result(job_id)
+                if wait_for == "final" and result.get("analysis") and not result["analysis"]["complete"]:
+                    job_id = result["analysis"].get("refinement_job_id") or job.get("refinement_job_id")
+                    if not job_id:
+                        raise RuntimeError("The screening result has no linked refinement job.")
+                    continue
+                return result
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break
@@ -161,7 +194,8 @@ class SEAClient:
 
     def predict(self, smiles: str | Iterable[str], *, dataset_id: str, ensemble: bool = False,
                 top_k: int = 20, wait_timeout: float = 3600.0,
-                poll_interval: float = 1.0) -> dict[str, Any]:
+                poll_interval: float = 1.0, statistics_profile: StatisticsProfile = "legacy",
+                wait_for: WaitFor = "final") -> dict[str, Any]:
         """Search one SMILES or a batch, wait for completion, and return results.
 
         By default, each molecule is a separate query. Set ensemble=True to
@@ -170,18 +204,23 @@ class SEAClient:
         """
         _positive(wait_timeout, "wait_timeout")
         _positive(poll_interval, "poll_interval")
+        if wait_for not in ("evidence", "screening", "final"):
+            raise ValueError("wait_for must be evidence, screening or final.")
         structures = _smiles(smiles)
         job_id = self.submit_prediction([structures] if ensemble else [[s] for s in structures],
-                                        dataset_id=dataset_id, top_k=top_k)
-        return self.wait(job_id, timeout=wait_timeout, poll_interval=poll_interval)
+                                        dataset_id=dataset_id, top_k=top_k, statistics_profile=statistics_profile)
+        return self.wait(job_id, timeout=wait_timeout, poll_interval=poll_interval, wait_for=wait_for)
 
     def compare(self, left: str | Iterable[str], right: str | Iterable[str], *, dataset_id: str,
-                wait_timeout: float = 3600.0, poll_interval: float = 1.0) -> dict[str, Any]:
+                wait_timeout: float = 3600.0, poll_interval: float = 1.0,
+                statistics_profile: StatisticsProfile = "legacy", wait_for: WaitFor = "final") -> dict[str, Any]:
         """Compare two ligand sets and wait for the result bundle."""
         _positive(wait_timeout, "wait_timeout")
         _positive(poll_interval, "poll_interval")
-        job_id = self.submit_comparison(left, right, dataset_id=dataset_id)
-        return self.wait(job_id, timeout=wait_timeout, poll_interval=poll_interval)
+        if wait_for not in ("evidence", "screening", "final"):
+            raise ValueError("wait_for must be evidence, screening or final.")
+        job_id = self.submit_comparison(left, right, dataset_id=dataset_id, statistics_profile=statistics_profile)
+        return self.wait(job_id, timeout=wait_timeout, poll_interval=poll_interval, wait_for=wait_for)
 
     def import_structures(self, content: str, *, format: StructureFormat) -> dict[str, Any]:
         """Convert and validate all records on the server before returning any."""

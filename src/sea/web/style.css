@@ -68,6 +68,16 @@ textarea { font: 13px/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; res
 .library-icon { font-size: 25px; color: var(--accent); }
 .dataset-bar select { width: 100%; max-width: 530px; padding: 0 26px 0 0; border: 0; background: transparent; color: var(--text); font-size: 13px; font-weight: 600; margin-top: 3px; }
 .dataset-bar p { max-width: 300px; font-size: 11px; margin: 0; text-align: right; line-height: 1.7; }
+.precision-selector { display: flex; align-items: center; gap: 24px; margin: 14px 0; }
+.precision-selector label { flex: 1; min-width: 0; }
+.precision-selector p { flex: 1; font-size: 11px; margin: 16px 0 0; }
+.analysis-banner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; border: 1px solid #c5d5e9; border-left: 3px solid var(--primary); border-radius: 8px; padding: 16px 20px; background: #f7f9fc; margin: 24px 0; }
+.analysis-banner p { font-size: 11px; margin: 4px 0 0; max-width: 620px; }
+.analysis-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.analysis-actions button { font-size: 11px; padding: 8px 12px; }
+.statistical-state { display: block; color: var(--muted); font-size: 9px; font-weight: 400; margin-top: 4px; }
+.simulation-note { font-size: 11px; padding: 10px 12px; background: #f7f9fc; border-radius: 6px; line-height: 1.8; }
+@media (max-width: 640px) { .precision-selector { flex-direction: column; align-items: stretch; gap: 0; } .precision-selector p { margin: 8px 0 0; } }
 .tabs { display: flex; gap: 28px; margin: 22px 0 24px; border-bottom: 1px solid var(--border); }
 .tabs button { background: none; padding: 14px 2px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--muted); font-size: 13px; }
 .tabs button span { font: 10px ui-monospace, monospace; margin-right: 7px; opacity: .65; }

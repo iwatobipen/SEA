@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import secrets
 import time
+from contextlib import asynccontextmanager
 from typing import Literal
 from fastapi import FastAPI, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
@@ -14,12 +15,18 @@ from pydantic import BaseModel, Field
 from rdkit import Chem
 from rdkit.Chem.Draw import rdMolDraw2D
 from .chemistry import normalize, molecule, InputError
-from .data import list_datasets, load_dataset
+from .data import list_datasets, load_dataset, preload_datasets
 from .jobs import connection, authenticate, hashed, submit
 from .annotations import enrich_results, target_info, load_annotations
 from .structure_inputs import StructureFormat, StructureImportError, import_structures
 
-app = FastAPI(title="SEA Open", version="0.1.0", description="Ligand ensemble similarity. E-values are expected random hits, not binding probabilities.")
+@asynccontextmanager
+async def lifespan(app):
+    preload_datasets()
+    yield
+
+
+app = FastAPI(title="SEA Open", version="0.1.0", lifespan=lifespan, description="Ligand ensemble similarity. E-values are expected random hits, not binding probabilities.")
 WEB = Path(__file__).parent/"web"
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
@@ -94,12 +101,14 @@ class Prediction(BaseModel):
     dataset_id: str
     queries: list[list[str]] = Field(min_length=1, description="Each inner list is one ligand ensemble. Use singleton lists for separate compounds.")
     top_k: int = Field(default=20,ge=1,le=1000)
+    statistics_profile: Literal["legacy", "balanced", "research"] = "legacy"
 
 
 class Comparison(BaseModel):
     dataset_id: str
     left: list[str] = Field(min_length=1)
     right: list[str] = Field(min_length=1)
+    statistics_profile: Literal["legacy", "balanced", "research"] = "legacy"
 
 
 class StructureImport(BaseModel):
@@ -140,6 +149,10 @@ class JobStatus(BaseModel):
     error: str | None
     created: float
     updated: float
+    parent_id: str | None = None
+    refinement_job_id: str | None = None
+    phase: str | None = None
+    profile: str = "legacy"
 
 
 class PairEvidence(BaseModel):
@@ -162,6 +175,46 @@ class TargetSummary(TargetInfo):
     ligand_count: int
 
 
+class PrecisionProfile(BaseModel):
+    id: str
+    name: Literal["balanced", "research"]
+    version: str
+    planned_trials: int
+    dataset_id: str
+    base_model_id: str
+    null_definition: str
+    sampler_version: str
+    stream_policy: str
+    seed: int
+    testing_family: Literal["per_query"]
+    confidence_level: float
+    interval_method: str
+
+
+class StatisticalDetails(BaseModel):
+    phase: Literal["pending", "screening", "final"]
+    status: Literal["pending", "resolution_limited", "uncertain", "evaluated", "exact", "analytic"]
+    profile_id: str
+    planned_trials: int
+    trials: int
+    exceedances: int | None
+    tail_probability_interval: list[float] | None
+    e_tail_interval: list[float] | None
+    confidence_level: float
+    interval_method: str | None
+    decision_threshold_e: float
+
+
+class AnalysisState(BaseModel):
+    phase: Literal["evidence", "screening", "refining", "final"]
+    complete: bool
+    profile: PrecisionProfile
+    source_job_id: str
+    refinement_job_id: str | None
+    total_comparisons: int
+    evaluated_comparisons: int
+
+
 class ScoreResult(BaseModel):
     query_index: int | None
     target: TargetInfo | None = None
@@ -171,13 +224,14 @@ class ScoreResult(BaseModel):
     right_size: int
     similar_ligands: list[PairEvidence]
     z_score: float | None
-    p_value: float
-    log_p_value: float
-    e_value: float
-    log_e_value: float
+    p_value: float | None
+    log_p_value: float | None
+    e_value: float | None
+    log_e_value: float | None
     comparisons: int
-    method: Literal["gumbel", "monte_carlo", "exact_zero"]
+    method: Literal["gumbel", "monte_carlo", "exact_zero", "pending"]
     p_resolution: float | None
+    statistics: StatisticalDetails | None = None
 
 
 class ResultBundle(BaseModel):
@@ -187,6 +241,7 @@ class ResultBundle(BaseModel):
     results: list[ScoreResult]
     execution: dict
     target_annotations: dict | None = None
+    analysis: AnalysisState | None = None
 
 
 def validate_sets(dataset_id, sets, maximum):
@@ -231,13 +286,52 @@ def get_job(jid,user):
 @app.get("/api/v1/jobs",operation_id="list_jobs")
 def jobs(user=Depends(owner)):
     with connection() as con:
-        return [dict(r) for r in con.execute("SELECT id,kind,status,progress,error,created,updated FROM jobs WHERE owner=? ORDER BY created DESC LIMIT 100",(user,))]
+        return [dict(r) for r in con.execute("SELECT id,kind,status,progress,error,created,updated,parent_id,refinement_job_id,phase,profile FROM jobs WHERE owner=? ORDER BY created DESC LIMIT 100",(user,))]
 
 
 @app.get("/api/v1/jobs/{job_id}",response_model=JobStatus,operation_id="get_job_status")
 def job_status(job_id:str,user=Depends(owner)):
     row = get_job(job_id,user)
-    return {k:row[k] for k in ("id","kind","status","progress","error","created","updated")}
+    return {k:row[k] for k in ("id","kind","status","progress","error","created","updated","parent_id","refinement_job_id","phase","profile")}
+
+
+@app.get("/api/v1/jobs/{job_id}/preview", response_model=ResultBundle, operation_id="get_job_preview")
+def preview(job_id:str,user=Depends(owner)):
+    row = get_job(job_id,user)
+    snapshot = row["preview"] or row["result"]
+    if not snapshot:
+        raise HTTPException(409, {"status": row["status"], "error": row["error"]})
+    return enrich_results(json.loads(snapshot))
+
+
+class RefinementRequest(BaseModel):
+    statistics_profile: Literal["balanced", "research"] = "balanced"
+
+
+@app.post("/api/v1/jobs/{job_id}/refine", status_code=202, response_model=JobAccepted, operation_id="refine_job")
+def refine(job_id:str,body:RefinementRequest,user=Depends(owner)):
+    row = get_job(job_id,user)
+    source_id = row["parent_id"] or job_id
+    from .phased_jobs import create_refinement
+    try:
+        with connection() as con:
+            con.execute("BEGIN IMMEDIATE")
+            child = create_refinement(source_id, user, body.statistics_profile, con)
+    except ValueError as exc:
+        raise HTTPException(409,str(exc)) from exc
+    return {"job_id": child}
+
+
+@app.post("/api/v1/jobs/{job_id}/resume", response_model=JobStatus, operation_id="resume_refinement")
+def resume(job_id:str,user=Depends(owner)):
+    get_job(job_id,user)
+    with connection() as con:
+        con.execute("BEGIN IMMEDIATE")
+        row = con.execute("SELECT kind,status FROM jobs WHERE id=?",(job_id,)).fetchone()
+        if row["kind"] != "refinement" or row["status"] not in ("failed","cancelled"):
+            raise HTTPException(409,"Only failed or cancelled refinement jobs can be resumed.")
+        con.execute("UPDATE jobs SET status='queued',cancel=0,error=NULL,worker=NULL,updated=? WHERE id=?",(time.time(),job_id))
+    return job_status(job_id,user)
 
 
 @app.post("/api/v1/jobs/{job_id}/cancel",operation_id="cancel_job")
@@ -257,7 +351,8 @@ def result(job_id:str,format:Literal["json","csv"]="json",user=Depends(owner)):
     if format=="json":
         return data
     out = io.StringIO()
-    fields = ["query_index","target_id","target_name","target_family","target_families","target_organism","target_tax_id","target_protein_classes","raw_score","z_score","p_value","log_p_value","e_value","log_e_value","method","p_resolution","comparisons","dataset_id","model_id"]
+    fields = ["query_index","target_id","target_name","target_family","target_families","target_organism","target_tax_id","target_protein_classes","raw_score","z_score","p_value","log_p_value","e_value","log_e_value","method","p_resolution","comparisons","dataset_id","model_id",
+              "analysis_phase","analysis_complete","statistics_profile_id","statistics_profile","statistics_version","sampler_version","stream_policy","null_definition","seed","planned_trials","statistics_phase","trials","exceedances","statistics_status","p_tail_lower","p_tail_upper","e_tail_lower","e_tail_upper","confidence_level","interval_method","source_job_id","refinement_job_id","testing_family"]
     writer = csv.DictWriter(out,fieldnames=fields,extrasaction="ignore")
     writer.writeheader()
     for r in data["results"]:
@@ -266,6 +361,21 @@ def result(job_id:str,format:Literal["json","csv"]="json",user=Depends(owner)):
         record.update({"target_family":target.get("family"),"target_families":"; ".join(target.get("families",[])),
                        "target_organism":target.get("organism"),"target_tax_id":target.get("tax_id"),
                        "target_protein_classes":json.dumps(target.get("protein_classes",[]),ensure_ascii=False)})
+        analysis = data.get("analysis") or {}
+        effective = analysis.get("profile") or {}
+        stat = r.get("statistics") or {}
+        p_interval = stat.get("tail_probability_interval") or [None, None]
+        e_interval = stat.get("e_tail_interval") or [None, None]
+        record.update(analysis_phase=analysis.get("phase"), analysis_complete=analysis.get("complete"),
+                      statistics_profile_id=effective.get("id"), statistics_profile=effective.get("name"),
+                      statistics_version=effective.get("version"), sampler_version=effective.get("sampler_version"),
+                      stream_policy=effective.get("stream_policy"), null_definition=effective.get("null_definition"), seed=effective.get("seed"),
+                      statistics_phase=stat.get("phase"),
+                      planned_trials=stat.get("planned_trials"), trials=stat.get("trials"), exceedances=stat.get("exceedances"),
+                      statistics_status=stat.get("status"), p_tail_lower=p_interval[0], p_tail_upper=p_interval[1],
+                      e_tail_lower=e_interval[0], e_tail_upper=e_interval[1], confidence_level=stat.get("confidence_level"),
+                      interval_method=stat.get("interval_method"), source_job_id=analysis.get("source_job_id"),
+                      refinement_job_id=analysis.get("refinement_job_id"), testing_family=effective.get("testing_family"))
         # Prevent spreadsheet formulas in user/data-supplied strings.
         writer.writerow({k:("'"+v if isinstance(v,str) and v.startswith(("=","+","-","@")) else v) for k,v in record.items()})
     return Response(out.getvalue(),media_type="text/csv",headers={"Content-Disposition":f'attachment; filename="{job_id}.csv"'})

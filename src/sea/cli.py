@@ -82,6 +82,11 @@ def main():
     evaluation = subs.add_parser("evaluate")
     evaluation.add_argument("dataset_id")
     evaluation.add_argument("--output",default="var/evaluation.json")
+    warm = subs.add_parser("warm", help="Precompute resumable fixed-budget background distributions without rebuilding data.")
+    warm.add_argument("dataset_id")
+    warm.add_argument("--profile", choices=["balanced", "research"], default="balanced")
+    warm.add_argument("--query-size", type=int, default=1)
+    warm.add_argument("--limit", type=int, default=20, help="Most frequent actual target sizes to prepare.")
     args = parser.parse_args()
     if getattr(args,"trials",999) < 1:
         parser.error("trials must be positive")
@@ -95,6 +100,24 @@ def main():
         if not 1<=args.count<=32:
             parser.error("count must be 1..32")
         run_workers(args.count)
+    elif args.command=="warm":
+        from collections import Counter
+        from .data import load_dataset
+        from .phased_jobs import precision_cache
+        from .precision import profile
+        if args.query_size < 1 or args.limit < 1:
+            parser.error("query-size and limit must be positive")
+        data, structures = load_dataset(args.dataset_id)
+        if args.query_size > len(structures):
+            parser.error("query-size exceeds the reference pool")
+        effective = profile(data, args.profile)
+        model = {**data["model"], "empirical_trials": effective["planned_trials"]}
+        cache = precision_cache(str(home().resolve()), args.dataset_id)
+        sizes = Counter(len(t["smiles"]) for t in data["targets"])
+        for size, frequency in sizes.most_common(args.limit):
+            key = tuple(sorted((args.query_size, size)))
+            cache.distribution(list(structures.values()), model, key, lambda: None)
+            print(json.dumps({"sizes": key, "target_count": frequency, "profile": effective, "status": "ready"}), flush=True)
     elif args.command=="build":
         settings=json.loads(Path(args.config).read_text())
         print(build_chembl(args.sqlite,args.release,settings,args.repeats,args.trials))

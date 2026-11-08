@@ -6,6 +6,11 @@ seed, trial count, background pool order, and sampling without replacement.
 Gumbel evaluation, normalization, evidence, target ranking, and API result fields
 are unchanged.
 
+The newer optional precision workflow adds a separate resumable `null-v2`
+cache and background refinement. See [statistics and UX](statistics-and-ux.md)
+and the [phased latency results](phased-performance-results.json). The measurements
+below remain the unchanged 999-trial scalar/optimized equivalence benchmark.
+
 ## What changed
 
 - Fingerprints are packed into a NumPy array on the first uncached Monte Carlo

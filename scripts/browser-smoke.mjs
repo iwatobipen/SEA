@@ -94,13 +94,33 @@ await delay(200);
 if(!await evaluate("document.documentElement.scrollWidth<=window.innerWidth"))throw Error('Input structures overflow on mobile');
 const inputMobile=await call('Page.captureScreenshot',{format:'png'});fs.writeFileSync('var/smoke-input-mobile.png',Buffer.from(inputMobile.data,'base64'));
 await call('Emulation.setDeviceMetricsOverride',{width:1280,height:1000,deviceScaleFactor:1,mobile:false});
+const searchStarted=Date.now();
 await evaluate("document.getElementById('predict-submit').click();document.getElementById('predict-submit').click()");
 for(let i=0;i<60;i++){if(await evaluate("!document.getElementById('result-panel').hidden"))break;await delay(500);}
 
 await waitFor('!busy');
+const evidenceSeconds=(Date.now()-searchStarted)/1000;
+await waitFor('refinementJob!==null');
+await evaluate("document.getElementById('cancel').click()");
+await waitFor("!document.getElementById('resume-refinement').hidden");
+if(!await evaluate("!busy&&!document.getElementById('result-panel').hidden&&!currentResult.analysis.complete"))throw Error('Paused refinement lost usable evidence');
+await evaluate("document.getElementById('resume-refinement').click()");
+async function finishFinal(){
+  await waitFor("currentResult?.analysis?.complete||pendingResult?.data.analysis?.complete");
+  if(await evaluate('Boolean(pendingResult?.data.analysis?.complete)'))await evaluate("document.getElementById('apply-statistics').click()");
+  if(!await evaluate("currentResult.analysis.complete&&currentResult.results.every(r=>r.statistics.phase==='final'&&(r.method!=='monte_carlo'||r.statistics.trials===199999))"))throw Error('Final result lacks fixed-budget provenance');
+}
+// Incoming statistics must leave the current query, selection, and order intact.
+await evaluate("document.getElementById('query-select').value='1';changeQuery();document.getElementById('result-sort').value='name';updateResults();window.beforeUpdate={target:resultRows[selectedIndex].result.target.id,rows:document.getElementById('result-rows').innerHTML};");
+await waitFor('Boolean(pendingResult?.data.analysis?.complete)');
+if(!await evaluate("document.getElementById('query-select').value==='1'&&document.getElementById('result-rows').innerHTML===beforeUpdate.rows&&!busy"))throw Error('Background update moved displayed evidence');
+await finishFinal();
+if(!await evaluate("document.getElementById('query-select').value==='1'&&document.getElementById('result-sort').value==='name'&&resultRows[selectedIndex].result.target.id===beforeUpdate.target&&!document.getElementById('json-export').hidden"))throw Error('Applying final statistics lost selection or export readiness');
+const finalSeconds=(Date.now()-searchStarted)/1000;
+await evaluate("document.getElementById('query-select').value='0';changeQuery();document.getElementById('result-sort').value='sea';updateResults()");
 const rows=await evaluate("document.querySelectorAll('#result-rows tr[data-index]').length");
 const jobCount=await evaluate("fetch('/api/v1/jobs').then(r=>r.json()).then(jobs=>jobs.length)");
-if(jobCount!==1)throw Error('Duplicate submission created extra jobs: '+jobCount);
+if(jobCount!==2)throw Error('Expected one screening and one precision job: '+jobCount);
 if(rows!==3)throw Error('Expected three demo targets for the selected query: '+rows);
 if(!await evaluate("document.getElementById('query-select').options.length===2"))throw Error('Queries were not grouped');
 await evaluate("document.getElementById('query-select').value='1';document.getElementById('query-select').dispatchEvent(new Event('change'))");
@@ -148,12 +168,14 @@ if(!await evaluate("!/[ぁ-んァ-ン一-龯]/.test(document.body.innerText)"))t
 // Exercise the set comparison and ensemble paths through the actual worker.
 await evaluate("document.querySelector('[data-tab=compare]').click();document.getElementById('compare-submit').click()");
 await waitFor("!busy&&document.getElementById('results-title').textContent==='Set comparison results'");
+await finishFinal();
 if(!await evaluate("document.getElementById('query-select').options.length===1&&document.getElementById('selected-title').textContent==='Ligand set A vs B'&&document.getElementById('selected-stats').textContent.includes('Set sizes (A / B)')"))throw Error('Set comparison presentation failed');
 await evaluate("document.querySelector('[data-tab=predict]').click();document.getElementById('mode').value='ensemble';document.getElementById('predict-submit').click()");
 await waitFor("!busy&&document.getElementById('results-title').textContent==='Target search results'");
+await finishFinal();
 if(!await evaluate("document.getElementById('query-select').options.length===1&&document.getElementById('query-description').textContent.includes('2 unique molecules')"))throw Error('Ensemble query presentation failed');
 await evaluate("document.querySelector('[data-tab=jobs]').click()");
-await waitFor("document.querySelectorAll('#job-list .job').length===3");
+await waitFor("document.querySelectorAll('#job-list .job').length===6");
 await evaluate("document.querySelector('#job-list .job button').click()");
 await waitFor("!busy&&!document.getElementById('result-panel').hidden");
 await evaluate("document.querySelector('[data-tab=predict]').click();document.getElementById('result-panel').scrollIntoView({behavior:'instant'})");
@@ -193,4 +215,4 @@ await delay(300);const mobileEditor=await call('Page.captureScreenshot',{format:
 if(!await evaluate("document.getElementById('structure-dialog').scrollWidth<=document.getElementById('structure-dialog').clientWidth"))throw Error('Editor dialog overflows on mobile');
 if(externalRequests.length)throw Error('Unexpected external resources: '+externalRequests.join(', '));
 if(runtimeErrors.length)throw Error('Browser exceptions: '+JSON.stringify(runtimeErrors));
-console.log(JSON.stringify({browser_prediction_rows:rows,queries:2,real_jobs:3,checks:['English UI and errors','typed input previews','preview pagination/errors/clearing','file input previews','query switching','family and text filters','retained SEA ranks','keyboard selection','pair expansion','underflow','zero/empty results','exports','comparison','ensemble','history','mobile overflow'],structure_formats:['sdf','mol','smiles','csv'],editor:'local Ketcher 3.18.0',desktop:'var/smoke-desktop.png',mobile:'var/smoke-mobile.png'}));ws.close();
+console.log(JSON.stringify({browser_prediction_rows:rows,queries:2,real_jobs:6,evidence_seconds:evidenceSeconds,final_seconds_including_pause:finalSeconds,monte_carlo_final_budget:199999,checks:['fixed-budget final artifacts','pause and resume','stable displayed selection','explicit update application','English UI and errors','typed input previews','preview pagination/errors/clearing','file input previews','query switching','family and text filters','retained SEA ranks','keyboard selection','pair expansion','underflow','zero/empty results','exports','comparison','ensemble','history','mobile overflow'],structure_formats:['sdf','mol','smiles','csv'],editor:'local Ketcher 3.18.0',desktop:'var/smoke-desktop.png',mobile:'var/smoke-mobile.png'}));ws.close();

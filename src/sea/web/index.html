@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>SEA Open · Explore ligand–target connections</title>
-  <link rel="stylesheet" href="/static/style.css?v=7">
-  <script src="/static/app.js?v=5" defer></script>
+  <link rel="stylesheet" href="/static/style.css?v=8">
+  <script src="/static/app.js?v=6" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to workspace</a>
@@ -22,6 +22,7 @@
     </section>
     <div id="workspace" hidden>
       <section class="dataset-bar" aria-label="Reference library"><div class="library-label"><span class="library-icon" aria-hidden="true">▤</span><label for="dataset">Reference library<select id="dataset"></select></label></div><p id="dataset-info"></p></section>
+      <div class="precision-selector"><label for="statistics-profile">Statistical evaluation<select id="statistics-profile"><option value="balanced">Balanced · automatic refinement (199,999 trials)</option><option value="research">Research · automatic refinement (999,999 trials)</option><option value="legacy">Legacy · dataset default, no refinement</option></select></label><p>View molecular evidence first. Precision tasks run in the background; final results record sampling uncertainty.</p></div>
       <nav class="tabs" aria-label="Workspace views"><button data-tab="predict" class="active" aria-pressed="true"><span>01</span> Target search</button><button data-tab="compare" aria-pressed="false"><span>02</span> Set comparison</button><button data-tab="jobs" aria-pressed="false"><span>03</span> Job history</button></nav>
       <section id="predict" class="card panel">
         <div class="section-heading"><div><span class="eyebrow">START WITH A STRUCTURE</span><h2>Find candidate targets</h2><p>Paste SMILES, draw a molecule, or import a structure file.</p></div><span class="step-mark" aria-hidden="true">01</span></div>
@@ -44,6 +45,7 @@
       <section id="jobs" class="card panel" hidden><div class="section-heading"><div><span class="eyebrow">PREVIOUS ANALYSES</span><h2>Your job history</h2><p>Reopen a completed analysis or check a running job.</p></div><button class="quiet" id="refresh">Refresh</button></div><div id="job-list"></div></section>
       <section id="progress-panel" class="card" hidden aria-label="Analysis progress"><div class="actions"><div><strong id="status" role="status" aria-live="polite"></strong><small id="job-id"></small></div><button id="cancel" class="quiet">Cancel job</button></div><progress id="progress" max="1" value="0" aria-label="Analysis completion"></progress></section>
       <section id="result-panel" hidden aria-labelledby="results-title">
+        <div id="analysis-banner" class="analysis-banner" hidden><div><strong id="analysis-stage"></strong><p id="analysis-note"></p></div><div class="analysis-actions"><button class="quiet" id="apply-statistics" hidden>Apply updated results</button><button class="quiet" id="resume-refinement" hidden>Resume refinement</button></div></div>
         <div class="result-heading"><div><span class="eyebrow">EXPLORE THE CONNECTIONS</span><h2 id="results-title">Search results</h2><p id="result-context"></p></div><div class="export-actions"><a class="download-link" id="csv-export">Download CSV ↓</a><a class="download-link" id="json-export">JSON ↓</a></div></div>
         <div class="query-context card"><div class="query-preview"><img id="query-preview" alt="Query molecule" width="150" height="90"><div><label for="query-select">Viewing query<select id="query-select"></select></label><span id="query-description"></span><code id="query-smiles"></code></div></div><div class="result-summary"><div><strong id="summary-count">0</strong><span id="summary-count-label">returned targets</span></div><div><strong id="summary-tc">—</strong><span>highest saved Tanimoto</span></div></div></div>
         <p class="result-note">Lower E-values indicate fewer expected random hits. E-values and Tanimoto similarities are not binding probabilities. <a href="#calculation-details">View calculation details ↓</a></p>

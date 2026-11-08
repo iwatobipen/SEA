@@ -1,8 +1,10 @@
 # Statistical precision and interactive search
 
-Status: design recommendation supported by a limited executed cost study.
-This document proposes future behavior; the current search defaults and
-statistical calculations have not been changed by this study.
+Status: implemented fixed-budget workflow. The web UI defaults to Balanced;
+legacy API/Python defaults remain compatible. See [README](../README.md#statistical-precision-without-blocking-exploration)
+and [Python API](python-api.md#fixed-budget-refinement-and-early-evidence) for use.
+The cost study below predates implementation and remains a limited numerical
+experiment, not a biological validation study.
 
 ## Recommendation
 
@@ -63,7 +65,7 @@ The dataset ID above identifies this installation's immutable ChEMBL build.
 Select an available ID and matching target IDs when using another dataset.
 The script creates and removes a temporary cache and creates no jobs or keys.
 
-## Proposed default workflow
+## Implemented default workflow
 
 | Phase | User experience | Statistical meaning |
 | --- | --- | --- |
@@ -73,7 +75,7 @@ The script creates and removes a temporary cache and creates no jobs or keys.
 | Refinement | Results remain usable while a separate task runs | Predetermined 199,999-trial Monte Carlo computation for positive-score comparisons |
 | Completed analysis | Retain/export an immutable final artifact | Actual budget, uncertainty, method, seed, and analysis version are recorded |
 
-For the first release of this workflow, use a fixed **199,999-trial** refinement
+This release uses a fixed **199,999-trial** refinement
 profile and retain an optional **999,999-trial** research profile. These are
 engineering starting points for a pilot, not validated universal sample-size
 requirements. Zero raw scores retain their exact P = 1 and need no refinement.
@@ -92,7 +94,9 @@ and precompute commonly used single-query size pairs outside interactive
 requests. Use the existing process pool and persistent queue as a starting
 point, adding explicit priorities/worker roles rather than one long job that
 blocks other users. A warm first useful display within two seconds is a
-proposed acceptance target, not an observed guarantee. Cold-load readiness and
+acceptance target, not a guaranteed latency across deployments. A single executed
+ChEMBL run returned evidence in 0.733 seconds cold and 0.739 seconds during
+refinement; see the [latency report](phased-performance-results.json). Cold-load readiness and
 queue waiting must be reported separately.
 
 Preserve row selection and scroll position as statistics arrive. Mark updated
@@ -157,25 +161,25 @@ interval definition, completion state, and source screening-job ID in API,
 Python, JSON, and CSV results. Preserve existing completed results as immutable
 artifacts; a refined result is a linked analysis, not an unexplained rewrite.
 
-The current cache stores one fixed-length sorted array per size pair and
-checks its shape against the dataset's trial count. New precision profiles
-need distinct paths and metadata. True resumable refinement also needs saved
-RNG state/sample count, an atomic append/checkpoint protocol, and coordinated
-work claims. Sorting alone loses the order needed to reconstruct a stream
-checkpoint. Separate cached sampling blocks can support different fixed final
-budgets without regenerating all earlier samples. Do not simply change the
-trial count associated with an existing cache file.
+The legacy cache retains sorted fixed-length arrays. The new `null-v2` cache
+stores unsorted scores, sample count, RNG state, identity and a checksum in one
+atomically replaced file. A cancelled block is discarded before checkpointing.
+File locks coordinate writers; readers can use completed prefixes during an
+extension. Completed prefix reuse and cancellation/resumption are tested against
+the original scalar RNG stream with exact equality. Budget-specific sorted
+arrays are kept in a bounded in-memory cache. Reference rebuilding is unnecessary.
 
-Legacy API/Python calls should retain their documented behavior while a new
-precision profile is introduced explicitly. The new workflow needs an explicit
-way to wait for screening versus final results. Agents and exports must be able
-to require a completed precision artifact and detect unresolved results.
+Legacy API/Python calls retain their default behavior. Callers explicitly opt into
+Balanced/Research and can wait for evidence, screening, or final results. Agents
+can require `analysis.complete` and inspect per-row unresolved states. The
+[validation record](validation.md#implemented-fixed-budget-precision-and-interactive-results)
+includes executed lifecycle, browser, numerical and ChEMBL latency checks.
 
-## Validation before a new default
+## Validation scope and remaining research
 
-1. Reproduce fixed-budget scalar results, RNG streams, threshold boundaries,
-   cache reloads, cancellation/resumption, and all reported interval formulas.
-2. Check null P-value calibration and Monte Carlo variability with independent
+1. Implemented checks reproduce fixed-budget scalar results, RNG streams, threshold boundaries,
+   cache reloads, cancellation/resumption, and binomial-tail interval formulas. See [validation](validation.md).
+2. Further research should check null P-value calibration and Monte Carlo variability with independent
    simulations. Validate any sequential procedure over complete stopping paths
    and the full testing family, rather than checking each iteration separately.
 3. Evaluate biological retrieval with global scaffold holdouts, removing held-out
@@ -187,7 +191,7 @@ to require a completed precision artifact and detect unresolved results.
 4. Verify that the precision profile improves stability near the intended E
    thresholds across multiple seeds. A satisfactory global Gumbel KS statistic
    alone does not validate extrapolation to an extreme single-query tail.
-5. Measure warm/cold/uncached p50 and p95 end-to-end latency under concurrent
+5. A browser smoke check covers fixed production budgets, pause/resume, stable selection, exports, and mobile display. Broader deployment testing should measure warm/cold/uncached p50 and p95 end-to-end latency under concurrent
    users, including worker starvation, time to first evidence, refinement
    duration, mobile display, and interruption/recovery. Keep final provenance
    and unresolved states correct when the precision task outlasts a UI session.

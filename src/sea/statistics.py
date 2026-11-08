@@ -98,7 +98,9 @@ def significance(score, left_size, right_size, pool, model, comparisons=1, check
         trials = model["empirical_trials"]
         rng = np.random.default_rng(np.random.SeedSequence([model["seed"], min(left_size,right_size), max(left_size,right_size)]))
         key = (min(left_size,right_size), max(left_size,right_size))
-        cached = null_cache.get(key) if null_cache is not None else None
+        cached = (null_cache.distribution(pool, model, key, check)
+                  if hasattr(null_cache, "distribution") else
+                  null_cache.get(key) if null_cache is not None else None)
         if cached is None:
             if hasattr(null_cache, "sample"):
                 cached = null_cache.sample(pool, model, key, check)

@@ -12,6 +12,41 @@ from sea.cli import demo
 from sea.jobs import claim, create_key, process
 
 
+@pytest.mark.parametrize('wait_for', ['evidence', 'screening', 'final'])
+def test_precision_wait_follows_declared_phase(wait_for):
+    seen = []
+    screen = {'analysis': {'phase': 'screening', 'complete': False, 'refinement_job_id': 'child'}, 'results': []}
+    final = {'analysis': {'phase': 'final', 'complete': True}, 'results': []}
+    def handler(request):
+        seen.append(request.url.path)
+        if request.url.path.endswith('/preview'):
+            return httpx.Response(200, json=screen)
+        if request.url.path.endswith('/source/result'):
+            return httpx.Response(200, json=screen)
+        if request.url.path.endswith('/child/result'):
+            return httpx.Response(200, json=final)
+        return httpx.Response(200, json={'id': request.url.path.split('/')[-1], 'status': 'completed', 'refinement_job_id': 'child'})
+    with SEAClient('key', transport=httpx.MockTransport(handler)) as client:
+        result = client.wait('source', wait_for=wait_for)
+    assert result == (final if wait_for == 'final' else screen)
+    assert any('/child/' in path for path in seen) == (wait_for == 'final')
+
+
+def test_precision_timeout_keeps_one_deadline_and_reports_child(monkeypatch):
+    clock = [0.]
+    monkeypatch.setattr(client_module.time, 'monotonic', lambda: clock[0])
+    monkeypatch.setattr(client_module.time, 'sleep', lambda value: clock.__setitem__(0, clock[0] + value))
+    def handler(request):
+        clock[0] += .02
+        if request.url.path.endswith('/result'):
+            return httpx.Response(200, json={'analysis': {'complete': False, 'refinement_job_id': 'child'}})
+        return httpx.Response(200, json={'id': 'child', 'status': 'completed' if request.url.path.endswith('/source') else 'running', 'refinement_job_id': 'child'})
+    with SEAClient('key', transport=httpx.MockTransport(handler)) as client:
+        with pytest.raises(SEAJobTimeout) as caught:
+            client.wait('source', timeout=.1, poll_interval=.01)
+    assert caught.value.job_id == 'child' and clock[0] <= .12
+
+
 def test_prediction_shapes_and_proxy_base_path(monkeypatch):
     monkeypatch.setenv("SEA_API_KEY", "test-key")
     monkeypatch.setenv("SEA_URL", "https://example.test/lab/sea/")
@@ -62,13 +97,14 @@ def test_polling_timeout_can_resume_without_resubmitting_or_cancelling(monkeypat
 
 
 @pytest.mark.parametrize("status", ["failed", "cancelled"])
-def test_terminal_jobs_raise_with_the_job_id(status):
+@pytest.mark.parametrize("wait_for", ["evidence", "final"])
+def test_terminal_jobs_raise_with_the_job_id(status, wait_for):
     def handler(request):
         return httpx.Response(200, json={"id": "terminal-job", "status": status, "error": "Example error"})
 
     with SEAClient("key", transport=httpx.MockTransport(handler)) as client:
         with pytest.raises(SEAJobError) as caught:
-            client.wait("terminal-job")
+            client.wait("terminal-job", wait_for=wait_for)
         assert caught.value.job_id == "terminal-job"
         assert caught.value.status == status
         assert caught.value.error == "Example error"
@@ -92,6 +128,10 @@ def test_invalid_local_arguments_do_not_submit_jobs(monkeypatch):
     requests = []
     transport = httpx.MockTransport(lambda request: requests.append(request))
     with SEAClient("key", transport=transport) as client:
+        with pytest.raises(ValueError):
+            client.predict('CCO', dataset_id='dataset', statistics_profile='adaptive')
+        with pytest.raises(ValueError):
+            client.predict('CCO', dataset_id='dataset', wait_for='unknown')
         for values in ([], "", ["CCO", ""], ["CCO", 123]):
             with pytest.raises(ValueError):
                 client.predict(values, dataset_id="dataset")

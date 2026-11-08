@@ -27,6 +27,17 @@ def connection():
       status TEXT, progress REAL DEFAULT 0, result TEXT, error TEXT, cancel INTEGER DEFAULT 0,
       created REAL, updated REAL, worker TEXT);
     """)
+    columns = {row[1] for row in con.execute("PRAGMA table_info(jobs)")}
+    additions = {"parent_id": "TEXT", "refinement_job_id": "TEXT", "phase": "TEXT",
+                 "preview": "TEXT", "checkpoint": "TEXT", "profile": "TEXT DEFAULT 'legacy'"}
+    if set(additions) - columns:
+        con.execute("BEGIN IMMEDIATE")
+        columns = {row[1] for row in con.execute("PRAGMA table_info(jobs)")}
+        for name, declaration in additions.items():
+            if name not in columns:
+                con.execute(f"ALTER TABLE jobs ADD COLUMN {name} {declaration}")
+        con.execute("CREATE UNIQUE INDEX IF NOT EXISTS refinement_per_profile ON jobs(parent_id,profile) WHERE kind='refinement'")
+        con.commit()
     return con
 
 
@@ -52,15 +63,17 @@ def authenticate(token):
 def submit(owner, kind, payload):
     jid, now = secrets.token_hex(16), time.time()
     with connection() as con:
-        con.execute("INSERT INTO jobs (id,owner,kind,payload,status,created,updated) VALUES (?,?,?,?,?,?,?)",
-                    (jid,owner,kind,json.dumps(payload),"queued",now,now))
+        con.execute("INSERT INTO jobs (id,owner,kind,payload,status,created,updated,profile,phase) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (jid,owner,kind,json.dumps(payload),"queued",now,now,payload.get("statistics_profile","legacy"),"queued"))
     return jid
 
 
-def claim(worker):
+def claim(worker, role="any"):
     with connection() as con:
         con.execute("BEGIN IMMEDIATE")
-        row = con.execute("SELECT * FROM jobs WHERE status='queued' AND cancel=0 ORDER BY created LIMIT 1").fetchone()
+        restriction = " AND kind!='refinement'" if role == "foreground" else ""
+        row = con.execute("SELECT * FROM jobs WHERE status='queued' AND cancel=0" + restriction +
+                          " ORDER BY CASE WHEN kind='refinement' THEN 1 ELSE 0 END,created LIMIT 1").fetchone()
         if row:
             con.execute("UPDATE jobs SET status='running',worker=?,updated=? WHERE id=?", (worker,time.time(),row["id"]))
     return dict(row) if row else None
@@ -77,6 +90,13 @@ def background_cache(root, dataset_id):
 
 
 def process(job):
+    if job["kind"] == "refinement" or json.loads(job["payload"]).get("statistics_profile", "legacy") != "legacy":
+        from .phased_jobs import process as phased_process
+        return phased_process(job)
+    return _legacy_process(job)
+
+
+def _legacy_process(job):
     jid = job["id"]
     last_check = [0.]
     last_progress = [0.]
@@ -147,12 +167,12 @@ def process(job):
             con.execute("UPDATE jobs SET status='failed',error=?,updated=? WHERE id=?", (str(exc),time.time(),jid))
 
 
-def work(stop, name):
+def work(stop, name, role="any"):
     import signal
     signal.signal(signal.SIGTERM, signal.SIG_DFL)
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     while not stop.is_set():
-        job = claim(name)
+        job = claim(name, role)
         if job:
             process(job)
         else:
@@ -168,6 +188,8 @@ def run_workers(count=2):
     fcntl.flock(lock, fcntl.LOCK_EX|fcntl.LOCK_NB)
     with connection() as con:
         con.execute("UPDATE jobs SET status=CASE WHEN cancel=1 THEN 'cancelled' ELSE 'queued' END,worker=NULL WHERE status='running'")
+    from .data import preload_datasets
+    preload_datasets()
     # Processes isolate RDKit workloads and avoid sharing the Python interpreter.
     import multiprocessing
     stop = multiprocessing.Event()
@@ -177,7 +199,8 @@ def run_workers(count=2):
         shutdown[0] = True
     signal.signal(signal.SIGTERM, request_shutdown)
     signal.signal(signal.SIGINT, request_shutdown)
-    workers = [multiprocessing.Process(target=work,args=(stop,f"worker-{i}")) for i in range(count)]
+    workers = [multiprocessing.Process(target=work,args=(stop,f"worker-{i}",
+               "foreground" if count > 1 and i == 0 else "any")) for i in range(count)]
     for worker in workers:
         worker.start()
     try:

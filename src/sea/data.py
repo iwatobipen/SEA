@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import sqlite3
 from datetime import datetime, timezone
@@ -82,6 +83,32 @@ def list_datasets():
         if p.stem not in manifests:
             manifests[p.stem] = json.loads(p.read_text())["manifest"]
     return [manifests[k] for k in sorted(manifests)]
+
+
+def preload_datasets():
+    """Warm up to two reference datasets before API/worker readiness.
+
+    SEA_PRELOAD_DATASETS=auto selects the latest ChEMBL build (or the latest
+    available demo). Use comma-separated exact IDs, or 'none' to disable.
+    """
+    setting = os.getenv("SEA_PRELOAD_DATASETS", "auto").strip()
+    if setting.lower() in ("", "none", "off"):
+        return []
+    if setting == "auto":
+        manifests = list_datasets()
+        def order(manifest):
+            release = re.search(r"\d+", str(manifest.get("release", "")))
+            return (manifest.get("source") == "ChEMBL", int(release[0]) if release else 0,
+                    manifest.get("created_at", ""))
+        manifests.sort(key=order, reverse=True)
+        selected = [d["id"] for d in manifests[:1]]
+    else:
+        selected = [value.strip() for value in setting.split(",") if value.strip()]
+        if len(selected) > 2:
+            raise ValueError("Preload at most two dataset IDs.")
+    for dataset_id in selected:
+        load_dataset(dataset_id)
+    return selected
 
 
 def build_chembl(source, release, settings, repeats=128, empirical_trials=999):

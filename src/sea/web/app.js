@@ -1,5 +1,6 @@
 const $ = id => document.getElementById(id);
 let currentJob = null, pollTimer = null, currentResult = null, busy = false;
+let watchGeneration = 0, refinementJob = null, pendingResult = null, artifactReady = false, lastSnapshot = '';
 let importing = false, exporting = false, editorReady = false, editorTarget = 'query';
 let datasets = [], resultRows = [], selectedQuery = null, selectedIndex = null, showAllPairs = false;
 const integer = value => Number(value).toLocaleString('en-US');
@@ -14,7 +15,8 @@ const targetName = target => demoNames[target?.id] || target?.name || 'Ligand se
 const families = target => target?.families?.length ? target.families : target?.family ? target.family.split(' / ') : [];
 const queryKey = row => row.query_index == null ? 'comparison' : String(row.query_index);
 const bestTc = row => row.similar_ligands?.length ? Math.max(...row.similar_ligands.map(p => p.tanimoto)) : null;
-const methodName = method => ({gumbel: 'Calibrated Gumbel', monte_carlo: 'Monte Carlo', exact_zero: 'Exact zero-score evaluation'}[method] || method);
+const methodName = method => ({gumbel: 'Calibrated Gumbel', monte_carlo: 'Monte Carlo', exact_zero: 'Exact zero-score evaluation', pending: 'Statistical evaluation pending'}[method] || method);
+const statisticsStatus = row => ({pending: 'Pending', resolution_limited: 'Resolution-limited', uncertain: 'Uncertain', evaluated: 'Evaluated', exact: 'Exact', analytic: 'Analytic model'}[row.statistics?.status] || '');
 const scrollTo = element => element.scrollIntoView({behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start'});
 
 function el(tag, className = '', text) {
@@ -49,6 +51,7 @@ function refreshInputControls() {
   ['editor-add', 'editor-clear'].forEach(id => $(id).disabled = !editorReady || importing || exporting);
   $('load-example').disabled = importing || exporting;
   $('dataset').disabled = busy;
+  $('statistics-profile').disabled = busy;
 }
 function setBusy(value) { busy = value; refreshInputControls(); }
 const inputPreviews = new Map();
@@ -148,7 +151,7 @@ $('login').onsubmit = async event => {
 $('logout').onclick = async () => {
   try {
     await api('/session', {method: 'DELETE'});
-    currentJob = null; currentResult = null; clearTimeout(pollTimer); setBusy(false);
+    currentJob = null; currentResult = null; watchGeneration++; refinementJob = null; pendingResult = null; clearTimeout(pollTimer); setBusy(false);
     $('progress-panel').hidden = true; $('result-panel').hidden = true; $('job-list').replaceChildren();
     message(); await loadWorkspace();
   } catch (error) { message(error.message); }
@@ -167,9 +170,10 @@ $('load-example').onclick = () => {
 };
 async function submit(path, body) {
   if (busy || importing || exporting) return;
+  watchGeneration++; clearTimeout(pollTimer);
   setBusy(true); message();
   try {
-    const response = await api(path, {method: 'POST', body: JSON.stringify({dataset_id: $('dataset').value, ...body})});
+    const response = await api(path, {method: 'POST', body: JSON.stringify({dataset_id: $('dataset').value, statistics_profile: $('statistics-profile').value, ...body})});
     await watch(response.job_id);
   } catch (error) { setBusy(false); message(error.message); }
 }
@@ -184,33 +188,91 @@ $('compare-submit').onclick = () => {
 };
 $('cancel').onclick = async () => {
   if (!currentJob) return;
-  try { await api(`/jobs/${currentJob}/cancel`, {method: 'POST'}); }
+  try { await api(`/jobs/${refinementJob || currentJob}/cancel`, {method: 'POST'}); }
   catch (error) { message(error.message); }
 };
-async function watch(id) {
-  clearTimeout(pollTimer); currentJob = id; setBusy(true); message();
-  $('progress-panel').hidden = false; $('result-panel').hidden = true;
+function incomingResult(data, id, ready) {
+  const signature = JSON.stringify([id, ready, data.analysis?.phase, data.analysis?.evaluated_comparisons, data.results.map(row => [row.query_index, row.target?.id, row.p_value, row.statistics?.phase, row.statistics?.trials])]);
+  if (signature === lastSnapshot) return;
+  lastSnapshot = signature;
+  if (!currentResult) {
+    currentJob = id; artifactReady = ready; render(data); setBusy(false);
+  } else {
+    pendingResult = {data, id, ready}; $('apply-statistics').hidden = false;
+    $('apply-statistics').textContent = data.analysis?.complete ? 'Apply final results' : data.analysis?.phase === 'screening' && ready ? 'Apply screening results' : 'Apply latest statistics';
+  }
+}
+$('apply-statistics').onclick = () => {
+  if (!pendingResult) return;
+  const update = pendingResult, query = $('query-select').value;
+  const selected = resultRows[selectedIndex]?.result;
+  const filters = [$('result-search').value, $('family-filter').value, $('result-sort').value];
+  const position = {top: window.scrollY, left: window.scrollX, behavior: 'instant'};
+  pendingResult = null; currentJob = update.id; artifactReady = update.ready;
+  render(update.data);
+  if ([...$('query-select').options].some(option => option.value === query)) {
+    $('query-select').value = query; changeQuery();
+  }
+  $('result-search').value = filters[0]; $('result-sort').value = filters[2];
+  if ([...$('family-filter').options].some(option => option.value === filters[1])) $('family-filter').value = filters[1];
+  selectedIndex = resultRows.find(item => queryKey(item.result) === query && item.result.target?.id === selected?.target?.id)?.index ?? null;
+  updateResults(); window.scrollTo(position);
+};
+$('resume-refinement').onclick = async () => {
+  if (!refinementJob) return;
+  try { await api(`/jobs/${refinementJob}/resume`, {method: 'POST'}); await watch(refinementJob, true); }
+  catch (error) { message(error.message); }
+};
+async function watch(id, preserve = false) {
+  const generation = ++watchGeneration;
+  clearTimeout(pollTimer); refinementJob = null; pendingResult = null; lastSnapshot = '';
+  $('apply-statistics').hidden = true; $('resume-refinement').hidden = true;
+  if (!preserve) { currentJob = id; currentResult = null; artifactReady = false; $('result-panel').hidden = true; }
+  setBusy(!preserve); message();
+  $('progress-panel').hidden = false;
   $('status').textContent = 'Loading analysis…'; $('job-id').textContent = `Job ${id}`;
-  $('progress').value = 0; $('cancel').hidden = false;
+  $('progress').value = 0; $('cancel').hidden = false; $('cancel').textContent = 'Cancel job';
+  let activeId = id;
   async function tick() {
-    if (currentJob !== id) return;
+    if (generation !== watchGeneration) return;
     try {
-      const job = await api(`/jobs/${id}`);
-      if (currentJob !== id) return;
+      const job = await api(`/jobs/${activeId}`);
+      if (generation !== watchGeneration) return;
+      const refining = job.kind === 'refinement';
+      if (refining) { refinementJob = activeId; $('cancel').textContent = 'Pause refinement'; }
+      if (refining && job.status !== 'completed' && !currentResult && job.parent_id) {
+        const source = await api(`/jobs/${job.parent_id}/result`);
+        if (generation !== watchGeneration) return;
+        incomingResult(source, job.parent_id, true); setBusy(false);
+      }
       const percent = Math.round(job.progress * 100);
-      $('status').textContent = job.status === 'queued' ? 'Queued · waiting for an available worker' : job.status === 'running' ? `Analyzing ligand similarities · ${percent}%` : `${job.status[0].toUpperCase()}${job.status.slice(1)}`;
-      $('progress').value = job.progress;
+      $('status').textContent = job.status === 'queued' ? (refining ? 'Refinement queued · you can continue searching' : 'Queued · waiting for an available worker') : job.status === 'running' ? `${refining ? 'Refining fixed-budget statistics' : 'Preparing evidence and screening statistics'} · ${percent}%` : `${job.status[0].toUpperCase()}${job.status.slice(1)}`;
+      $('job-id').textContent = `Job ${activeId}`; $('progress').value = job.progress;
       $('cancel').hidden = !['queued', 'running'].includes(job.status);
       if (job.status === 'completed') {
-        const data = await api(`/jobs/${id}/result`);
-        if (currentJob !== id) return;
-        render(data); setBusy(false); $('progress-panel').hidden = true; scrollTo($('result-panel')); return;
+        const data = await api(`/jobs/${activeId}/result`);
+        if (generation !== watchGeneration) return;
+        incomingResult(data, activeId, true); setBusy(false);
+        if (data.analysis && !data.analysis.complete && job.refinement_job_id) {
+          activeId = job.refinement_job_id; refinementJob = activeId;
+          pollTimer = setTimeout(tick, 100); return;
+        }
+        $('progress-panel').hidden = true; return;
+      }
+      if (job.profile !== 'legacy' || refining) {
+        try {
+          const data = await api(`/jobs/${activeId}/preview`);
+          if (generation !== watchGeneration) return;
+          incomingResult(data, activeId, false); setBusy(false);
+        } catch (error) { if (error.status !== 409) throw error; }
       }
       if (['failed', 'cancelled'].includes(job.status)) {
-        setBusy(false); message(job.error || (job.status === 'cancelled' ? 'The job was cancelled.' : 'The analysis failed.')); return;
+        setBusy(false); $('resume-refinement').hidden = !refining;
+        $('status').textContent = refining ? 'Refinement incomplete · screening results remain available' : 'Analysis incomplete';
+        message(job.error || (refining ? 'Refinement is paused. Resume it to complete the declared statistical budget.' : 'The job was cancelled.')); return;
       }
-      pollTimer = setTimeout(tick, 1000);
-    } catch (error) { if (currentJob === id) { setBusy(false); $('cancel').hidden = true; message(error.message); } }
+      pollTimer = setTimeout(tick, 500);
+    } catch (error) { if (generation === watchGeneration) { setBusy(false); $('cancel').hidden = true; message(error.message); } }
   }
   await tick();
 }
@@ -265,8 +327,17 @@ function render(data) {
   const elapsed = data.execution?.elapsed_seconds;
   const fingerprint = data.dataset.fingerprint;
   $('result-context').textContent = `${libraryName(data.dataset)}${fingerprint ? ` · ${fingerprint.kind} · ${integer(fingerprint.bits)} bits` : ''}${Number.isFinite(elapsed) ? ` · ${elapsed.toFixed(2)} s of computation` : ''}`;
-  $('metadata').textContent = JSON.stringify({dataset: data.dataset, threshold: data.threshold, normalization: data.normalization, execution: data.execution, job_id: currentJob}, null, 2);
+  $('metadata').textContent = JSON.stringify({dataset: data.dataset, threshold: data.threshold, normalization: data.normalization, execution: data.execution, analysis: data.analysis, job_id: currentJob}, null, 2);
+  const analysis = data.analysis;
+  $('analysis-banner').hidden = !analysis;
+  $('apply-statistics').hidden = !pendingResult;
+  if (analysis) {
+    const labels = {evidence: 'Chemical evidence · statistics pending', screening: 'Screening · preliminary statistics', refining: 'Refinement · partial statistics', final: 'Final · fixed budget complete'};
+    $('analysis-stage').textContent = labels[analysis.phase] || analysis.phase;
+    $('analysis-note').textContent = `${analysis.profile.name} profile · ${integer(analysis.profile.planned_trials)} planned trials per Monte Carlo comparison. ${analysis.complete ? 'Final refers to computational completion; limited resolution or uncertainty may remain.' : 'You can continue searching. Updates are applied only when you choose; displayed rows stay in place.'}`;
+  }
   for (const [id, suffix, extension] of [['json-export', '', 'json'], ['csv-export', '?format=csv', 'csv']]) {
+    $(id).hidden = !artifactReady;
     $(id).href = `/api/v1/jobs/${currentJob}/result${suffix}`; $(id).setAttribute('download', `${currentJob}.${extension}`);
   }
   $('result-panel').hidden = false; changeQuery();
@@ -296,7 +367,7 @@ function changeQuery() {
   $('family-filter').parentElement.hidden = isComparison;
   $('results-layout').querySelector('thead th:nth-child(2)').textContent = isComparison ? 'Ligand sets' : 'Target / family / species';
   $('result-search').placeholder = isComparison ? 'Filter set comparison…' : 'Filter by target, ID or species…';
-  $('list-title').textContent = isComparison ? 'Ligand set comparison' : 'Ranked targets';
+  $('list-title').textContent = isComparison ? 'Ligand set comparison' : currentResult.analysis?.phase === 'evidence' ? 'Candidates by raw score · statistics pending' : 'Ranked targets';
   updateResults();
 }
 function updateResults() {
@@ -321,7 +392,9 @@ function updateResults() {
     button.type = 'button'; button.setAttribute('aria-pressed', String(index === selectedIndex));
     button.setAttribute('aria-controls', 'target-detail');
     target.append(button, targetMetadata(row.target)); tr.append(target);
-    const e = el('td', 'numeric-cell e-cell'); e.dataset.label = 'E-value'; e.append(scientific(row.e_value, row.log_e_value)); tr.append(e);
+    const e = el('td', 'numeric-cell e-cell'); e.dataset.label = 'E-value'; e.append(scientific(row.e_value, row.log_e_value));
+    if (row.statistics) e.append(el('small', 'statistical-state', `${row.statistics.phase === 'screening' ? 'Preliminary · ' : ''}${statisticsStatus(row)}`));
+    tr.append(e);
     const tc = el('td', 'numeric-cell'), maximum = bestTc(row); tc.dataset.label = 'Best Tanimoto';
     tc.append(el('span', 'tc-value', maximum === null ? '—' : maximum.toFixed(4)));
     if (maximum !== null) { const track = el('span', 'tc-track'), fill = el('span', 'tc-fill'); fill.style.width = `${Math.max(0, Math.min(1, maximum))*100}%`; track.append(fill); tc.append(track); }
@@ -365,6 +438,17 @@ function evidence(row) {
   if (row.p_resolution) method += ` · p-value resolution ${row.p_resolution}. Equal E-values are ordered by raw score.`;
   else if (row.method === 'exact_zero') method += ' · No ligand pairs reached the similarity threshold.';
   $('method-note').textContent = method;
+  let simulation = $('simulation-note');
+  if (!simulation) { simulation = el('p', 'simulation-note'); simulation.id = 'simulation-note'; $('method-note').after(simulation); }
+  simulation.hidden = !row.statistics;
+  if (row.statistics) {
+    const stats = row.statistics;
+    const interval = stats.e_tail_interval;
+    simulation.textContent = `${statisticsStatus(row)} · ${stats.phase}. ${integer(stats.trials)} completed Monte Carlo trials${stats.exceedances == null ? '' : ` · ${integer(stats.exceedances)} null scores at least as large`}. Testing scope: ${integer(row.comparisons)} target comparisons for this query.`;
+    if (interval) simulation.textContent += ` Pointwise 95% interval for the limiting null-tail E-value: ${interval.map(value => Number(value.toPrecision(4))).join('–')}. This measures simulation uncertainty, not binding probability.`;
+    if (stats.status === 'resolution_limited') simulation.textContent += ' Zero exceedances: the reported value is the finite-sampling floor, not zero or an upper bound.';
+    if (stats.status === 'uncertain') simulation.textContent += ' The interval crosses the E = 0.05 reference threshold.';
+  }
   const pairs = row.similar_ligands || [], displayed = showAllPairs ? pairs : pairs.slice(0, 3);
   $('evidence-count').textContent = pairs.length ? `${displayed.length} of ${pairs.length} saved pairs · ${plural(row.contributing_pairs, 'contributing pair')} in total` : 'No pairs reached the calibrated similarity threshold.';
   $('evidence').replaceChildren(...displayed.map((pair, i) => {
@@ -399,7 +483,8 @@ async function loadJobs() {
     if (!jobs.length) $('job-list').append(el('p', 'empty-state', 'No analyses yet. Start a target search or compare two ligand sets.'));
     for (const job of jobs) {
       const row = el('div', 'job'), info = el('div');
-      info.append(el('strong', '', job.kind === 'prediction' ? 'Target search' : 'Set comparison'), el('small', '', job.id));
+      info.append(el('strong', '', `${job.kind === 'prediction' ? 'Target search' : job.kind === 'refinement' ? 'Statistical refinement' : 'Set comparison'} · ${job.profile}`), el('small', '', job.id));
+      if (job.parent_id) info.append(el('small', '', `Screening source: ${job.parent_id}`));
       const status = el('span', 'status-badge', job.status[0].toUpperCase() + job.status.slice(1)); status.dataset.status = job.status;
       const date = el('time', '', new Date(job.created * 1000).toLocaleString('en-US', {dateStyle: 'medium', timeStyle: 'short'})); date.dateTime = new Date(job.created * 1000).toISOString();
       const button = el('button', 'quiet', job.status === 'completed' ? 'View results →' : 'Open job →'); button.onclick = () => watch(job.id);
