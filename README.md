@@ -154,7 +154,28 @@ The JSON `target` object includes `id`, `name`, `family`, `families`, `protein_c
 
 The default reference build filters to human proteins, so its annotated species is normally Homo sapiens (9606). Annotations still use each target's actual ChEMBL organism and taxonomy ID rather than assuming the configured species.
 
-## Agent access
+## Python API
+
+The [Python API guide](docs/python-api.md) covers target searches, batches and ensembles, set comparisons, SDF/MOL/SMILES/CSV input, job resumption, exports, errors, target metadata, and local calculations without the server. The client uses the same server and workers as the web application and is available in the existing Pixi environment:
+
+```python
+import os
+from sea import SEAClient
+
+with SEAClient() as client:  # Reads SEA_API_KEY and optional SEA_URL.
+    result = client.predict(
+        "COc1ccc2[nH]cc(c2c1)C(CC)CN",
+        dataset_id=os.environ["SEA_DATASET_ID"],
+        top_k=10,
+    )
+
+for row in result["results"]:
+    print(row["target"]["name"], row["target"]["family"], row["target"]["organism"], row["e_value"])
+```
+
+Use an issued API key and the exact dataset ID printed by `pixi run sea datasets`; a release name such as `ChEMBL_37` is not a dataset ID. Run a saved script with `pixi run python your_script.py`. After setting `SEA_API_KEY` and `SEA_DATASET_ID`, the complete runnable example is `pixi run python examples/python_client.py`. `predict()` waits for completion; use `submit_prediction()` and `wait()` separately to retain a job ID for resumption or CSV export.
+
+## Agent and raw HTTP access
 
 Set `SEA_API_KEY` to your API key and `SEA_DATASET_ID` to a dataset ID.
 
